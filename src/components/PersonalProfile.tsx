@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { DiaryEntry, Profile, SoundRecipe, UserCreation } from '../types';
-import { fetchAnswerQuotes, addAnswerQuote } from '../lib/supabase';
+import { fetchAnswerQuotes, addAnswerQuote, fetchDiaryPrompts, addDiaryPrompt } from '../lib/supabase';
 
 interface ProfileProps {
   profile: Profile;
@@ -73,10 +73,16 @@ const BOOK_QUOTES = [
 ];
 
 const MOOD_CHIPS = ['平静', '澄澈', '喜悦', '困顿', '烦愁', '安闲'];
-const DIARY_PROMPTS = [
+const LOCAL_DIARY_PROMPTS = [
   "此刻让你挂心焦虑的一两组繁重琐屑是什么？",
   "回想今天值得感激的一缕暖阳、一份餐点或微小温情。",
-  "闭上眼睛深深吸气15秒，记录下身体此时的自在回馈与知觉变化。"
+  "闭上眼睛深深吸气15秒，记录下身体此时的自在回馈与知觉变化。",
+  "如果用一种天气或温度来形容你此刻的情绪，那会是什么？",
+  "今天有什么事情让你感到心气一滞，或者有些许释怀？",
+  "记录一件今天完成的能带给你微小成就感的事情。",
+  "你感到头脑中有哪些盘旋不去的念头？试着将它们化为文字写下来。",
+  "此刻周围最清晰的声响是什么？闭目倾听，它带给你怎样的联想？",
+  "此时此刻，对感到疲倦或紧绷的自己，你想说一句怎样温和的话语？"
 ];
 
 export default function PersonalProfile({
@@ -250,28 +256,47 @@ export default function PersonalProfile({
   const [showDbConfig, setShowDbConfig] = useState(false);
 
   const [dynamicQuotes, setDynamicQuotes] = useState<string[]>(BOOK_QUOTES);
+  const [diaryPrompts, setDiaryPrompts] = useState<string[]>([]);
+  const [showMoodTrendsModal, setShowMoodTrendsModal] = useState(false);
+  const [trendTab, setTrendTab] = useState<'trends' | 'cloud'>('trends');
+  const [recipeSubTab, setRecipeSubTab] = useState<'my_recipes' | 'fav_recipes' | 'melody_creation'>('my_recipes');
 
   useEffect(() => {
     async function loadDynamicCorpus() {
       if (dbMode === 'supabase' && supabaseUrl && supabaseAnonKey) {
         setIsSyncing(true);
+        setSyncLogs('正在拉取 Supabase 云端国风心灵语料...⌛');
+        
+        // 1. Fetch book quotes
         const fetched = await fetchAnswerQuotes();
         if (fetched && fetched.length > 0) {
           setDynamicQuotes(fetched);
-          setSyncLogs(`云端数据成功连通：当前自研库已载入 ${fetched.length} 条珍贵答案！`);
+          setSyncLogs(`云端数据成功连通：当前书库已载入 ${fetched.length} 条珍贵答案！`);
         } else {
           setDynamicQuotes(BOOK_QUOTES);
           setSyncLogs('云端暂无数据或查询出错，已自动平滑降级至本端 35 条国风精选语料。');
         }
+
+        // 2. Fetch diary prompts
+        const fPrompts = await fetchDiaryPrompts();
+        if (fPrompts && fPrompts.length > 0) {
+          const three = [...fPrompts].sort(() => 0.5 - Math.random()).slice(0, 3);
+          setDiaryPrompts(three);
+        } else {
+          const three = [...LOCAL_DIARY_PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
+          setDiaryPrompts(three);
+        }
         setIsSyncing(false);
       } else {
         setDynamicQuotes(BOOK_QUOTES);
+        const three = [...LOCAL_DIARY_PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
+        setDiaryPrompts(three);
       }
     }
     loadDynamicCorpus();
   }, [dbMode, supabaseUrl, supabaseAnonKey]);
 
-  const [profileActiveTab, setProfileActiveTab] = useState<'recipes' | 'creations' | 'diaries'>('recipes');
+  const [profileActiveTab, setProfileActiveTab] = useState<'recipes' | 'diaries'>('recipes');
 
   const isDark = theme === 'night';
 
@@ -478,6 +503,19 @@ export default function PersonalProfile({
     }
   };
 
+  const handleRefreshPrompts = async () => {
+    if (dbMode === 'supabase') {
+      const fPrompts = await fetchDiaryPrompts();
+      if (fPrompts && fPrompts.length > 0) {
+        const three = [...fPrompts].sort(() => 0.5 - Math.random()).slice(0, 3);
+        setDiaryPrompts(three);
+        return;
+      }
+    }
+    const three = [...LOCAL_DIARY_PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
+    setDiaryPrompts(three);
+  };
+
   const handleAddCustomQuote = async () => {
     if (!newQuoteInput.trim()) return;
     if (dbMode !== 'supabase') {
@@ -560,6 +598,41 @@ export default function PersonalProfile({
     const idx = Math.floor(Math.random() * dynamicQuotes.length);
     setSelectedQuoteIndex(idx);
     setIsBookOpened(true);
+  };
+
+  const getMoodTrendData = () => {
+    const rawData = [...diaries].reverse();
+    const moodsWeight: Record<string, number> = {
+      '平静': 70,
+      '愉悦': 90,
+      '疲惫': 50,
+      '焦虑': 40,
+      '急躁': 35,
+      '抑郁': 20
+    };
+
+    if (rawData.length === 0) {
+      return [
+        { date: '5/22', score: 65, label: '平静' },
+        { date: '5/23', score: 70, label: '平静' },
+        { date: '5/24', score: 55, label: '疲惫' },
+        { date: '5/25', score: 75, label: '愉悦' },
+        { date: '5/26', score: 60, label: '平静' },
+        { date: '5/27', score: 80, label: '愉悦' },
+        { date: '今天', score: 70, label: '平静' }
+      ];
+    }
+
+    const latestEntries = rawData.slice(-7);
+    return latestEntries.map((d, index) => {
+      const score = (d.aiResponse as any)?.score || moodsWeight[d.mood] || 70;
+      const dateStr = d.date ? d.date.split('/').slice(-2).join('/') : `日记 ${index + 1}`;
+      return {
+        date: dateStr,
+        score,
+        label: d.mood
+      };
+    });
   };
 
   return (
@@ -709,11 +782,11 @@ export default function PersonalProfile({
                 maxLength={50}
                 rows={2}
                 className={`w-full text-[10.5px] p-2 border rounded focus:outline-none ${
-                  isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-stone-300 text-stone-850'
+                  isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-stone-300 text-stone-900'
                 }`}
               />
               <div className="flex justify-end gap-2">
-                <button onClick={() => setIsEditingBio(false)} className="text-[10px] text-gray-500 hover:underline cursor-pointer">取消</button>
+                <button onClick={() => setIsEditingBio(false)} className="text-[10px] text-gray-400 hover:underline cursor-pointer">取消</button>
                 <button onClick={handleSaveBio} className="text-[10px] text-[#a67c52] font-bold hover:underline cursor-pointer">保存说明</button>
               </div>
             </div>
@@ -731,7 +804,7 @@ export default function PersonalProfile({
             <Smile className="w-3.5 h-3.5 text-amber-500" />
             <span>今日心情卡：</span>
           </p>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 border-stone-200">
             {MOOD_CHIPS.map(mood => {
               const isActive = userMood === mood;
               return (
@@ -743,7 +816,7 @@ export default function PersonalProfile({
                       ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 font-bold'
                       : isDark
                         ? 'bg-slate-900/60 border-transparent text-gray-500 hover:text-gray-300'
-                        : 'bg-stone-100 border-transparent text-stone-500 hover:text-stone-800'
+                        : 'bg-stone-100 border-transparent text-stone-500 hover:text-stone-850'
                   }`}
                 >
                   {mood}
@@ -751,12 +824,28 @@ export default function PersonalProfile({
               );
             })}
           </div>
+
+          {/* Clickable shortcut helper to check trend logs and sync cloud database */}
+          <div className="mt-3 pt-2.5 border-t border-dashed border-gray-500/10 flex justify-end">
+            <button
+               onClick={() => setShowMoodTrendsModal(true)}
+              className={`text-[10px] font-black cursor-pointer transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${
+                isDark 
+                  ? 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20 shadow-sm' 
+                  : 'bg-stone-550/10 border-stone-250 text-stone-700 hover:bg-[#faf6ed] shadow-sm'
+              }`}
+              id="open_trends_btn"
+            >
+              <Activity className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+              <span>查看七日情绪能量走势 & 数据库云同步 ▴</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 2. CHINESE JOURNAL DIARY DIALOG TRIGGER BAR */}
       <div className={`p-4 rounded-2xl border text-center flex flex-col gap-2 transition-all ${
-        isDark ? 'bg-slate-950/60 border-slate-900 shadow-lg' : 'bg-white border-stone-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
+        isDark ? 'bg-slate-950/60 border-slate-900 shadow-lg' : 'bg-white border-stone-200/85 shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
       }`} id="record_starter_box">
         <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
           <Sparkles className="w-5 h-5 animate-pulse" />
@@ -816,8 +905,8 @@ export default function PersonalProfile({
         isDark ? 'bg-[#0f172a]/40 border-slate-900/80 shadow-lg' : 'bg-white border-stone-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)]'
       }`} id="personal_healing_workspace_tabs">
         {/* Tab Headers */}
-        <div className={`grid grid-cols-3 p-1 rounded-xl mb-4 text-[10.5px] font-extrabold font-sans select-none ${
-          isDark ? 'bg-slate-950/70' : 'bg-stone-100/80'
+        <div className={`grid grid-cols-2 p-1 rounded-xl mb-4 text-[10.5px] font-extrabold font-sans select-none ${
+          isDark ? 'bg-slate-950/70 border border-slate-900' : 'bg-stone-100/80 border border-stone-200'
         }`}>
           <button
             onClick={() => setProfileActiveTab('recipes')}
@@ -828,19 +917,7 @@ export default function PersonalProfile({
             }`}
           >
             <Star className="w-3.5 h-3.5 shrink-0" />
-            <span>我的配方库 ({savedRecipes.length})</span>
-          </button>
-          
-          <button
-            onClick={() => setProfileActiveTab('creations')}
-            className={`py-1.5 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
-              profileActiveTab === 'creations'
-                ? isDark ? 'bg-slate-900 text-amber-500 border border-slate-800' : 'bg-white text-[#a67c52] shadow-sm'
-                : isDark ? 'text-gray-500' : 'text-stone-500'
-            }`}
-          >
-            <Music className="w-3.5 h-3.5 shrink-0" />
-            <span>创作中心 ({userCreations.length})</span>
+            <span>我的配方库 ({savedRecipes.length + userCreations.length})</span>
           </button>
           
           <button
@@ -858,237 +935,229 @@ export default function PersonalProfile({
 
         {/* Tab Content Panels */}
         <div className="min-h-[220px]">
-          {/* A. MY SAVED RECIPES */}
+          {/* A. MY RECIPES TAB SECTION */}
           {profileActiveTab === 'recipes' && (
-            <div className="space-y-2.5">
-              {savedRecipes.length === 0 ? (
-                <div className="py-8 text-center px-4">
-                  <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
-                    暂无收藏配方。可前往「音能混配」栏目调谐属于您气血的专属自然白噪音混音并保存，或到生命讨论广场一键收藏他人的疗愈经验设计。
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5">
-                  {savedRecipes.map(recipe => (
-                    <div
-                      key={recipe.id}
-                      className={`p-3 rounded-xl border relative transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-sans ${
-                        isDark ? 'bg-slate-950/60 border-slate-900' : 'bg-stone-550/10 border-stone-200/50 shadow-sm'
-                      }`}
-                    >
-                      <div className="pr-8 flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-extrabold text-[12px] text-[#8e6b46]">{recipe.name}</span>
-                          <span className={`text-[8px] px-1 rounded font-normal ${
-                            isDark ? 'bg-slate-900 text-gray-500' : 'bg-white text-stone-500 border border-stone-200'
-                          }`}>
-                            by {recipe.creator}
-                          </span>
-                        </div>
-                        <p className={`text-[9.5px] mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
-                          {recipe.description}
-                        </p>
-                      </div>
+            <div className="space-y-4">
+              {/* Three-way Sub-tab selector */}
+              <div className="flex gap-2 mb-3 border-b border-gray-500/10 pb-2 select-none">
+                <button
+                  onClick={() => setRecipeSubTab('my_recipes')}
+                  className={`px-3 py-1.5 text-[11px] font-black tracking-tight rounded-lg cursor-pointer transition-all ${
+                    recipeSubTab === 'my_recipes'
+                      ? isDark ? 'bg-amber-500/15 text-amber-540 border border-amber-500/30' : 'bg-stone-900 text-white shadow-sm font-black'
+                      : 'text-gray-400 hover:text-stone-500'
+                  }`}
+                >
+                  我的配方 ({savedRecipes.filter(r => r.isCustom).length})
+                </button>
+                <button
+                  onClick={() => setRecipeSubTab('fav_recipes')}
+                  className={`px-3 py-1.5 text-[11px] font-black tracking-tight rounded-lg cursor-pointer transition-all ${
+                    recipeSubTab === 'fav_recipes'
+                      ? isDark ? 'bg-amber-500/15 text-amber-540 border border-amber-500/30' : 'bg-stone-900 text-white shadow-sm font-black'
+                      : 'text-gray-400 hover:text-stone-500'
+                  }`}
+                >
+                  收藏配方 ({savedRecipes.filter(r => !r.isCustom).length})
+                </button>
+                <button
+                  onClick={() => setRecipeSubTab('melody_creation')}
+                  className={`px-3 py-1.5 text-[11px] font-black tracking-tight rounded-lg cursor-pointer transition-all ${
+                    recipeSubTab === 'melody_creation'
+                      ? isDark ? 'bg-amber-500/15 text-amber-540 border border-amber-500/30' : 'bg-stone-900 text-white shadow-sm font-black'
+                      : 'text-gray-400 hover:text-stone-500'
+                  }`}
+                >
+                  旋律创作 ({userCreations.length})
+                </button>
+              </div>
 
-                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                        <button
-                          onClick={() => onApplyRecipe(recipe)}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
-                            isDark
-                              ? 'bg-slate-950 hover:bg-slate-800 text-cyan-400 border border-slate-800'
-                              : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-sm'
+              {/* Sub-tab 1: My Recipes */}
+              {recipeSubTab === 'my_recipes' && (
+                <div className="space-y-2.5">
+                  {savedRecipes.filter(r => r.isCustom).length === 0 ? (
+                    <div className="py-8 text-center px-4">
+                      <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
+                        暂无自制配方。您可以前往「音能混配」栏目调谐属于您气血的专属自然白噪音配方。
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5" id="my_recipes_subtab">
+                      {savedRecipes.filter(r => r.isCustom).map(recipe => (
+                        <div
+                          key={recipe.id}
+                          className={`p-3 rounded-xl border relative transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-sans ${
+                            isDark ? 'bg-slate-950/60 border-slate-900/80 text-gray-300' : 'bg-stone-550/10 border-stone-200/50 text-stone-900 shadow-sm'
                           }`}
                         >
-                          载入混配
-                        </button>
-                        
-                        {onDeleteRecipe && (
-                          <button
-                            onClick={() => onDeleteRecipe(recipe.id)}
-                            className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
-                              isDark ? 'text-slate-600' : 'text-stone-300'
-                            }`}
-                            title="从收藏名册中移除"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                          <div className="pr-8 flex-1 min-w-0 text-left">
+                            <span className="font-extrabold text-[12px] text-[#8e6b46]">{recipe.name}</span>
+                            <p className={`text-[9.5px] mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
+                              {recipe.description}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                            <button
+                              onClick={() => onApplyRecipe(recipe)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                                isDark
+                                  ? 'bg-slate-950 hover:bg-slate-805 text-cyan-400 border border-slate-800'
+                                  : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-sm'
+                              }`}
+                            >
+                              载入混配
+                            </button>
+                            
+                            {onDeleteRecipe && (
+                              <button
+                                onClick={() => onDeleteRecipe(recipe.id)}
+                                className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
+                                  isDark ? 'text-slate-600' : 'text-stone-300'
+                                }`}
+                                title="从自制名册中移除"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* B. MY CREATION CENTER */}
-          {profileActiveTab === 'creations' && (
-            <div className="space-y-2.5">
-              {userCreations.length === 0 ? (
-                <div className="py-8 text-center px-4">
-                  <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
-                    暂无谱曲创作记录。点击主页下方的「疗愈音频创作」进入大屏拼轨界面，通过点选声带节点与节拍即可轻松拼接旋律，曲谱会自动记录在此。
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5">
-                  {userCreations.map(creation => (
-                    <div
-                      key={creation.id}
-                      className={`p-3 rounded-xl border relative transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-sans ${
-                        isDark ? 'bg-slate-950/60 border-slate-900' : 'bg-stone-550/10 border-stone-200/50 shadow-sm'
-                      }`}
-                    >
-                      <div className="pr-8 flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-extrabold text-[12px] text-[#8e6b46]">{creation.name}</span>
-                          <span className={`text-[8.5px] px-1 rounded font-normal bg-amber-500/10 text-amber-600 border border-amber-500/20`}>
-                            {creation.instrumentLabel}
-                          </span>
-                        </div>
-                        <div className={`text-[9px] mt-1 space-x-2 font-mono flex items-center ${isDark ? 'text-slate-500' : 'text-stone-505'}`}>
-                          <span>共 {creation.barCount} 小节编轨</span>
-                          <span>•</span>
-                          <span>节点数: {creation.totalNotes} 点</span>
-                          <span>•</span>
-                          <span>速度: {creation.bpm} 拍/分</span>
-                        </div>
-                        <span className="text-[7.5px] font-mono text-gray-400 block mt-1">保存时间: {creation.date}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                        <button
-                          onClick={() => onLoadCreation && onLoadCreation(creation)}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
-                            isDark
-                              ? 'bg-slate-950 hover:bg-slate-800 text-emerald-400 border border-slate-800'
-                              : 'bg-emerald-600 hover:bg-emerald-750 text-white shadow-sm'
+              {/* Sub-tab 2: Favorited Recipes */}
+              {recipeSubTab === 'fav_recipes' && (
+                <div className="space-y-2.5">
+                  {savedRecipes.filter(r => !r.isCustom).length === 0 ? (
+                    <div className="py-8 text-center px-4">
+                      <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
+                        暂无收藏配方。您可以去静修电台寻找其他修行师发布的环境设计。
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5" id="fav_recipes_subtab">
+                      {savedRecipes.filter(r => !r.isCustom).map(recipe => (
+                        <div
+                          key={recipe.id}
+                          className={`p-3 rounded-xl border relative transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-sans ${
+                            isDark ? 'bg-slate-950/60 border-slate-900/80 text-gray-300' : 'bg-stone-550/10 border-stone-200/50 text-stone-900 shadow-sm'
                           }`}
                         >
-                          载入琴谱
-                        </button>
-                        
-                        {onDeleteCreation && (
-                          <button
-                            onClick={() => onDeleteCreation(creation.id)}
-                            className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
-                              isDark ? 'text-slate-600' : 'text-stone-300'
-                            }`}
-                            title="永久删除曲谱档案"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                          <div className="pr-8 flex-1 min-w-0 text-left">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-[12px] text-[#8e6b46]">{recipe.name}</span>
+                              <span className={`text-[8.5px] px-1 rounded font-normal bg-orange-500/10 text-orange-600 border border-orange-500/20`}>
+                                by {recipe.creator}
+                              </span>
+                            </div>
+                            <p className={`text-[9.5px] mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
+                              {recipe.description}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                            <button
+                              onClick={() => onApplyRecipe(recipe)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                                isDark
+                                  ? 'bg-slate-950 hover:bg-slate-805 text-cyan-400 border border-slate-800'
+                                  : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-sm'
+                              }`}
+                            >
+                              载入混配
+                            </button>
+                            
+                            {onDeleteRecipe && (
+                              <button
+                                onClick={() => onDeleteRecipe(recipe.id)}
+                                className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
+                                  isDark ? 'text-slate-600' : 'text-stone-300'
+                                }`}
+                                title="从收藏名册中移除"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-            </div>
+
+              {/* Sub-tab 3: Melody Creations */}
+              {recipeSubTab === 'melody_creation' && (
+                <div className="space-y-2.5">
+                  {userCreations.length === 0 ? (
+                    <div className="py-8 text-center px-4">
+                      <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
+                        暂无自主琴谱编排首创。
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5" id="melody_creation_subtab">
+                      {userCreations.map(creation => (
+                        <div
+                          key={creation.id}
+                          className={`p-3 rounded-xl border relative transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-sans ${
+                            isDark ? 'bg-slate-950/60 border-slate-900/80 text-gray-300' : 'bg-stone-550/10 border-stone-200/50 text-stone-900 shadow-sm'
+                          }`}
+                        >
+                          <div className="pr-8 flex-1 min-w-0 text-left">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-[12px] text-[#8e6b46]">{creation.name}</span>
+                              <span className={`text-[8.5px] px-1 rounded font-normal bg-amber-500/10 text-amber-605 border border-amber-500/20`}>
+                                {creation.instrumentLabel}
+                              </span>
+                            </div>
+                            <div className={`text-[9px] mt-1 space-x-2 font-mono flex items-center ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
+                              <span>共 {creation.barCount} 小节编轨</span>
+                              <span>•</span>
+                              <span>节点数: {creation.totalNotes} 点</span>
+                            </div>
+                            <span className="text-[7.5px] font-mono text-gray-400 block mt-1">保存时间: {creation.date}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                            <button
+                              onClick={() => onLoadCreation && onLoadCreation(creation)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                                isDark
+                                  ? 'bg-slate-950 hover:bg-slate-850 text-emerald-400 border border-slate-800'
+                                  : 'bg-emerald-600 hover:bg-[#5aa370] text-white shadow-sm'
+                              }`}
+                            >
+                              打开创作版面
+                            </button>
+                            
+                            {onDeleteCreation && (
+                              <button
+                                onClick={() => onDeleteCreation(creation.id)}
+                                className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
+                                  isDark ? 'text-slate-600' : 'text-stone-300'
+                                }`}
+                                        title="永久删除曲谱档案"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
           )}
 
           {/* C. MY REFLECTION LOGS (DIARIES) */}
           {profileActiveTab === 'diaries' && (
             <div className="space-y-4">
-              {/* BRAND NEW MOOD TREND LINE CHART CARD */}
-              <div className={`p-4 rounded-2xl border font-sans text-left transition-all relative overflow-hidden ${
-                isDark 
-                  ? 'bg-slate-950/60 border-slate-900 shadow-inner' 
-                  : 'bg-white border-stone-250/70 shadow-[0_4px_20px_rgba(0,0,0,0.015)]'
-              }`}>
-                {/* Header elements */}
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <Activity className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'} animate-pulse`} />
-                    <span className={`text-[12px] font-black ${isDark ? 'text-gray-200' : 'text-stone-850'}`}>
-                      七日情绪能量走势 {isDemo && <span className="text-[9.5px] opacity-50 font-normal font-sans">(静修基准演示)</span>}
-                    </span>
-                  </div>
-                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                    isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-[#a67c52]/10 text-[#a67c52]'
-                  }`}>
-                    {trendFeedback.badge}
-                  </span>
-                </div>
-                
-                {/* Recharts responsive plot */}
-                <div className="w-full h-36 mt-1 mb-2 font-mono" id="recharts_mood_flow">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={chartData}
-                      margin={{ top: 5, right: 10, left: -28, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={isDark ? "#f59e0b" : "#a67c52"} stopOpacity={0.25}/>
-                          <stop offset="95%" stopColor={isDark ? "#f59e0b" : "#a67c52"} stopOpacity={0.0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
-                      <XAxis 
-                        dataKey="name" 
-                        tickLine={false} 
-                        axisLine={false}
-                        tick={{ fill: isDark ? '#64748b' : '#857463', fontSize: 9 }}
-                      />
-                      <YAxis 
-                        domain={[1, 10]} 
-                        tickLine={false} 
-                        axisLine={false}
-                        tickCount={5}
-                        tick={{ fill: isDark ? '#64748b' : '#857463', fontSize: 9 }}
-                      />
-                      <Tooltip 
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const val = payload[0].value;
-                            const d = payload[0].payload;
-                            return (
-                              <div className={`p-2 rounded-lg border text-[10px] font-sans ${
-                                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-stone-200 text-stone-900 shadow-md'
-                              }`}>
-                                <p className="font-bold font-mono">日期: {d.name}</p>
-                                <p className="text-amber-500 font-black">情绪: {d.mood} ({val}分)</p>
-                                <p className="text-[8px] opacity-40">{d.isReal ? '本端密存日记' : '静坐基线估量'}</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="情绪能量" 
-                        stroke={isDark ? "#f59e0b" : "#a67c52"} 
-                        strokeWidth={2}
-                        fillOpacity={1} 
-                        fill="url(#colorMood)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Vertical helper guidance index text */}
-                <div className="flex justify-between items-center text-[8.5px] text-gray-500 font-sans border-t border-dashed border-gray-500/10 pt-1.5 px-1 mb-2">
-                  <span>低落/紧绷 (1-4分)</span>
-                  <span>平静/中和 (5-8分)</span>
-                  <span>神泰澄澈 (9-10分)</span>
-                </div>
-
-                {/* Custom AI Advice Card Container */}
-                <div className={`p-2.5 rounded-xl border font-sans ${
-                  isDark ? 'bg-slate-900/30 border-slate-900/80 text-gray-400' : 'bg-[#faf6ed]/60 border-[#ecdcb9]/45 text-[#5c4033] shadow-inner'
-                }`}>
-                  <p className={`text-[10.5px] font-black mb-1 flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'}`}>
-                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                    {trendFeedback.title}
-                  </p>
-                  <p className="text-[9.5px] leading-relaxed text-justify opacity-85">
-                    {trendFeedback.advice}
-                  </p>
-                </div>
-              </div>
-
               {/* Sub-label heading for historic list */}
               <div className="flex items-center justify-between text-[10.5px] font-black px-1">
                 <span className="flex items-center gap-1 text-gray-505 font-sans">
@@ -1114,14 +1183,14 @@ export default function PersonalProfile({
                       className={`p-3 rounded-xl border transition-all text-xs font-sans relative ${
                         isDark 
                           ? 'bg-slate-950/60 border-slate-900 text-gray-300' 
-                          : 'bg-stone-50 border-stone-200/50 text-stone-900 shadow-sm'
+                          : 'bg-stone-550/10 border-stone-200/50 text-stone-900 shadow-sm'
                       }`}
                     >
                       <div className="flex justify-between items-center mb-1 text-[9.5px] opacity-50">
                         <span className="flex items-center gap-1 font-mono">
                           <Calendar className="w-3 h-3" /> {diary.date}
                         </span>
-                        <span className={`px-1 rounded ${isDark ? 'bg-slate-900 text-sky-45 shrink-0' : 'bg-stone-200/60 text-stone-700 shrink-0'}`}>
+                        <span className={`px-1 rounded ${isDark ? 'bg-slate-900 text-sky-40 shrink-0' : 'bg-stone-200/60 text-stone-700 shrink-0'}`}>
                           感觉: {diary.mood}
                         </span>
                       </div>
@@ -1155,165 +1224,6 @@ export default function PersonalProfile({
           )}
         </div>
 
-        {/* SUPABASE CLOUD MANAGEMENT EXPANSION PANEL */}
-        <div className={`mt-4 p-4 rounded-2xl border text-left font-sans transition-all relative ${
-          isDark 
-            ? 'bg-slate-950/40 border-slate-900 shadow-inner text-gray-300' 
-            : 'bg-white border-stone-200 shadow-sm text-stone-900'
-        }`}>
-          <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setShowDbConfig(!showDbConfig)}>
-            <div className="flex items-center gap-2">
-              <DatabaseZap className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'} ${isSyncing ? 'animate-bounce' : ''}`} />
-              <span className="text-[12px] font-black tracking-tight flex items-center gap-1.5">
-                Supabase 语料库云端同步面板
-                {dbMode === 'supabase' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-              </span>
-            </div>
-            <span className="text-[10.5px] text-gray-500 hover:text-gray-300 transition-colors">
-              {showDbConfig ? '收起 ▴' : '展开管理 ▾'}
-            </span>
-          </div>
-
-          {showDbConfig && (
-            <div className="mt-3.5 space-y-3.5 border-t border-dashed border-gray-500/10 pt-3">
-              {/* Database type switcher toggle */}
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-gray-400 font-sans">数据来源状态:</span>
-                <div className={`flex p-0.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-stone-100 border-stone-200'}`}>
-                  <button
-                    onClick={() => { setDbMode('local'); localStorage.removeItem('supabase_url'); localStorage.removeItem('supabase_key'); }}
-                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${
-                      dbMode === 'local' 
-                        ? 'bg-sky-500 text-white shadow-sm' 
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    本地预设 (35条)
-                  </button>
-                  <button
-                    onClick={() => setDbMode('supabase')}
-                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${
-                      dbMode === 'supabase' 
-                        ? 'bg-emerald-500 text-white shadow-sm' 
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    Supabase 实时云库
-                  </button>
-                </div>
-              </div>
-
-              {dbMode === 'supabase' ? (
-                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="space-y-2.5 text-[11px]">
-                  {/* Inputs */}
-                  <div>
-                    <label className="block text-gray-400 font-medium mb-1 font-sans">VITE_SUPABASE_URL</label>
-                    <input
-                      type="text"
-                      value={supabaseUrl}
-                      onChange={(e) => setSupabaseUrl(e.target.value)}
-                      placeholder="https://your-project.supabase.co"
-                      className={`w-full p-2 rounded-xl text-xs font-mono outline-none border transition-all ${
-                        isDark 
-                          ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-emerald-500/50' 
-                          : 'bg-stone-50 border-stone-200 text-stone-900 focus:border-[#a67c52]/50 shadow-inner'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-400 font-medium mb-1 font-sans">VITE_SUPABASE_ANON_KEY</label>
-                    <input
-                      type="password"
-                      value={supabaseAnonKey}
-                      onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                      placeholder="eyJhbGciOiJIUzI1NiIsIn..."
-                      className={`w-full p-2 rounded-xl text-xs font-mono outline-none border transition-all ${
-                        isDark 
-                          ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-emerald-500/50' 
-                          : 'bg-stone-50 border-stone-200 text-stone-900 focus:border-[#a67c52]/50 shadow-inner'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveDbSettings}
-                      className="w-full py-2 text-[10.5px] font-black bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl shadow transition-all cursor-pointer text-center"
-                    >
-                      测试 & 保存连接
-                    </button>
-                  </div>
-
-                  {/* Add dynamic quotes input to database */}
-                  <div className="border-t border-dashed border-gray-400/20 pt-3 mt-1 text-[11px]">
-                    <span className="font-extrabold text-[#a67c52] dark:text-amber-400 flex items-center gap-1 mb-1.5">
-                      <Plus className="w-3.5 h-3.5 text-emerald-500" /> 上传新纸签至 Supabase 语料库
-                    </span>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={newQuoteInput}
-                        onChange={(e) => setNewQuoteInput(e.target.value)}
-                        placeholder="写下一句您想要的国风心灵笺言..."
-                        className={`flex-1 p-2 rounded-xl text-xs outline-none border transition-all ${
-                          isDark 
-                            ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-sky-500/50' 
-                            : 'bg-stone-50 border-stone-200 text-stone-900 shadow-sm focus:border-[#a67c52]/50'
-                        }`}
-                      />
-                      <button
-                        onClick={handleAddCustomQuote}
-                        disabled={isAddingQuote || !newQuoteInput.trim()}
-                        className="p-2 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-white font-extrabold cursor-pointer transition-all shrink-0 text-[10.5px]"
-                      >
-                        {isAddingQuote ? '存储中...' : '放入云库'}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ) : (
-                <div className={`p-2.5 rounded-lg border text-[10px] text-gray-400 ${
-                  isDark ? 'bg-slate-900/40 border-slate-900' : 'bg-stone-50 border-stone-200'
-                }`}>
-                  当前运行在本地沙盒模式。如果您想启用 Supabase，请选择右侧开关，并在数据库中建立表和输入您的凭证密匙。
-                </div>
-              )}
-
-              {/* logs and backup status */}
-              <div className={`p-2 rounded-lg border text-[9.5px] ${
-                isDark ? 'bg-slate-900/60 border-slate-900/80 text-gray-400' : 'bg-[#faf6ed]/60 border-[#ecdcb9]/50 text-[#857463]'
-              } font-sans leading-relaxed`}>
-                <span className="font-black block text-[9px] uppercase tracking-wide opacity-50 mb-0.5">当前云管道状态:</span>
-                {syncLogs}
-              </div>
-
-              {/* Schema SQL info box */}
-              {dbMode === 'supabase' && (
-                <div className={`p-2.5 rounded-lg border text-[9.5px] ${
-                  isDark ? 'bg-emerald-950/15 border-emerald-900/40 text-emerald-300' : 'bg-emerald-50 border-emerald-100 text-emerald-800'
-                } font-sans text-justify mt-2`}>
-                  <p className="font-bold mb-1">💡 数据库表配置指南</p>
-                  请在您的 Supabase 控制台的 SQL Editor 中执行下述语句以建立语料库表格：
-                  <pre className="mt-1.5 p-2 bg-black/40 text-[8.5px] rounded border border-white/5 font-mono overflow-x-auto text-[#a6e22e] leading-normal select-all">
-{`create table book_quotes (
-  id bigint generated always as identity primary key,
-  quote text not null,
-  category text default 'general',
-  created_at timestamp with time zone default timezone('utc'::text, now())
-);
-
--- 开启安全并启用公有(anon)读取与插入权限 Policies
-alter table book_quotes enable row level security;
-create policy "Allow public read-only" on book_quotes for select using (true);
-create policy "Allow public insert-only" on book_quotes for insert with check (true);`}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* 5. LOGOUT CONTROL BUTTON */}
         {onLogOut && (
           <div className="mt-4 pt-3 border-t border-dashed border-gray-500/10 flex justify-center">
@@ -1331,8 +1241,258 @@ create policy "Allow public insert-only" on book_quotes for insert with check (t
         )}
       </div>
 
-      {/* 4. CLOUD PIPELINE (REMOVED FROM UI TO PRESERVE SIMPLICITY) */}
+      {/* SEVENTH-DAY MOOD TRENDS & DATABASE CLOUD CO-SYNC MODAL PANEL OVERLAY */}
+      <AnimatePresence>
+        {showMoodTrendsModal && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 70 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+            className={`fixed inset-0 z-[120] flex flex-col p-6 md:p-12 shadow-2xl overflow-y-auto ${
+              isDark ? 'bg-[#080d19] text-gray-200' : 'bg-[#fafaf7] text-stone-950'
+            }`}
+            id="trends_and_cloud_overlay"
+          >
+            {/* Header toolbar */}
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-500/10 shrink-0">
+              <div className="flex items-center gap-1.5 text-amber-500">
+                <Activity className="w-4 h-4 text-rose-500 shrink-0 animate-pulse" />
+                <span className="text-[11.5px] font-black uppercase font-sans">情绪疗愈能量走势与云管道中心</span>
+              </div>
+              <button
+                onClick={() => {
+                  setShowMoodTrendsModal(false);
+                }}
+                className={`p-1 rounded-full cursor-pointer hover:bg-gray-500/15 transition-colors`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
+            {/* Inner modal tabs switcher */}
+            <div className={`grid grid-cols-2 p-1 rounded-xl mb-4 text-xs font-bold grow-0 shrink-0 ${
+              isDark ? 'bg-slate-950/80 border border-slate-900' : 'bg-stone-200/50 border border-stone-200'
+            }`}>
+              <button
+                onClick={() => setTrendTab('trends')}
+                className={`py-1.5 rounded-lg text-[11px] cursor-pointer transition-all flex items-center justify-center gap-1 ${
+                  trendTab === 'trends'
+                    ? isDark ? 'bg-slate-900 border border-slate-800 text-amber-400' : 'bg-white border border-stone-300 text-stone-950 shadow-sm'
+                    : 'text-gray-400'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>七日情绪走势</span>
+              </button>
+              <button
+                onClick={() => setTrendTab('cloud')}
+                className={`py-1.5 rounded-lg text-[11px] cursor-pointer transition-all flex items-center justify-center gap-1 ${
+                  trendTab === 'cloud'
+                    ? isDark ? 'bg-slate-900 border border-slate-800 text-amber-400' : 'bg-white border border-stone-300 text-stone-950 shadow-sm'
+                    : 'text-gray-400'
+                }`}
+              >
+                <Cloud className="w-3.5 h-3.5" />
+                <span>Supabase 云语料同步</span>
+              </button>
+            </div>
+
+            {/* TAB CONTENT 1: MOOD CURVE */}
+            {trendTab === 'trends' && (
+              <div className="flex-1 flex flex-col gap-4">
+                <div className={`p-4 rounded-2xl border ${
+                  isDark ? 'bg-slate-950/40 border-slate-900' : 'bg-white border-stone-200 shadow-sm'
+                }`}>
+                  <div className="mb-3">
+                    <h4 className="text-xs font-black">🌱 七日情绪电磁能量波段平滑曲线</h4>
+                    <p className="text-[10px] text-gray-400 mt-0.5">纵轴情绪值 (得分 0-100)，平稳且波动率低代表深度入禅</p>
+                  </div>
+                  <div className="h-[220px] w-full" id="recharts_trend_container">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={getMoodTrendData()} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#d97706" stopOpacity={0.25}/>
+                            <stop offset="95%" stopColor="#d97706" stopOpacity={0.0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#1e293b' : '#e2e8f0'} />
+                        <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                        <YAxis domain={[0, 100]} tickCount={6} tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            background: isDark ? '#020617' : '#ffffff', 
+                            borderColor: isDark ? '#1e293b' : '#e2e8f0',
+                            borderRadius: '8px',
+                            fontSize: '10.5px'
+                          }} 
+                        />
+                        <Area type="monotone" dataKey="score" stroke="#d97706" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMood)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* AI Healing Suggestions recommendation sheet */}
+                <div className={`p-4 rounded-xl border ${
+                  isDark ? 'bg-amber-500/5 border-amber-500/20 text-amber-300/90' : 'bg-amber-50/50 border-amber-200 text-stone-850'
+                } text-[11px] leading-relaxed flex flex-col gap-2`}>
+                  <div className="flex items-center gap-1.5 text-amber-500">
+                    <Sparkles className="w-4 h-4 animate-pulse" />
+                    <span className="font-extrabold text-[11.5px]">AI 灵性愈疗处方反馈</span>
+                  </div>
+                  <p className="text-justify font-sans">
+                    诊断概要：您过去七天的身心共振指数表现平稳。
+                    {diaries.length === 0 
+                      ? ' 检测到您本地目前尚无随笔日记。建议您现在翻开「随随笔日签」，记录一次静心冥想的呼吸轨迹或内心杂念阻滞。通过书写泄墨心结，系统能够捕集更真实的血气经络趋势，并为您提供专属 AI 药膳乐律配方。' 
+                      : ' 根据您最近的心灵手札频段检测，情绪波动正逐步趋近对称和谐区。在心烦急躁时推荐进行「五音疗疾」的“徵音(火)”或“羽音(水)”混配设计，通过 528Hz 黄金频率促醒中枢神经，修补经络堵点。'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT 2: DATABASE CLOUD SYNC */}
+            {trendTab === 'cloud' && (
+              <div className="flex-1 flex flex-col gap-4">
+                <div className={`p-4 rounded-xl border ${
+                  isDark ? 'bg-slate-950/40 border-slate-900 text-gray-400' : 'bg-white border-stone-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="text-xs font-black text-amber-500">🌌 数据主权与托管模式</h4>
+                      <p className="text-[10px] text-gray-400 mt-0.5">选择将日签、反思、自定义配方放入个人 Supabase 云账户</p>
+                    </div>
+                    {/* switcher */}
+                    <div className="flex items-center gap-1 p-0.5 rounded-lg bg-gray-500/10">
+                      <button
+                        onClick={() => setDbMode('local')}
+                        className={`px-2 py-1 text-[9px] font-bold rounded cursor-pointer ${
+                          dbMode === 'local' ? 'bg-amber-600 text-white shadow' : 'text-gray-400'
+                        }`}
+                      >
+                        本地密盒
+                      </button>
+                      <button
+                        onClick={() => setDbMode('supabase')}
+                        className={`px-2 py-1 text-[9px] font-bold rounded cursor-pointer ${
+                          dbMode === 'supabase' ? 'bg-amber-600 text-white shadow' : 'text-gray-400'
+                        }`}
+                      >
+                        云端同步
+                      </button>
+                    </div>
+                  </div>
+
+                  {dbMode === 'supabase' ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-gray-400 font-medium mb-1 font-sans text-[10px]">VITE_SUPABASE_URL</label>
+                        <input
+                          type="text"
+                          value={supabaseUrl}
+                          onChange={(e) => setSupabaseUrl(e.target.value)}
+                          placeholder="https://your-project.supabase.co"
+                          className={`w-full p-2 rounded-xl text-xs font-mono outline-none border transition-all ${
+                            isDark 
+                              ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-emerald-500/50' 
+                              : 'bg-stone-50 border-stone-200 text-stone-900 focus:border-[#a67c52]/50 shadow-inner'
+                          }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-400 font-medium mb-1 font-sans text-[10px]">VITE_SUPABASE_ANON_KEY</label>
+                        <input
+                          type="password"
+                          value={supabaseAnonKey}
+                          onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                          placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+                          className={`w-full p-2 rounded-xl text-xs font-mono outline-none border transition-all ${
+                            isDark 
+                              ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-emerald-500/50' 
+                              : 'bg-stone-50 border-stone-200 text-stone-900 focus:border-[#a67c52]/50 shadow-inner'
+                          }`}
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleSaveDbSettings}
+                        className="w-full py-2 text-[10.5px] font-black bg-emerald-600 hover:bg-emerald-550 text-white rounded-xl shadow transition-all cursor-pointer text-center"
+                      >
+                        测试 & 保存连接
+                      </button>
+
+                      {/* Add dynamic quotes input to database */}
+                      <div className="border-t border-dashed border-gray-400/20 pt-3 mt-1 text-[11px]">
+                        <span className="font-extrabold text-[#a67c52] dark:text-amber-400 flex items-center gap-1 mb-1.5">
+                          <Plus className="w-3.5 h-3.5 text-emerald-500" /> 上传新纸签至 Supabase 语料库
+                        </span>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            value={newQuoteInput}
+                            onChange={(e) => setNewQuoteInput(e.target.value)}
+                            placeholder="写下一句你想要的国风心灵笺言..."
+                            className={`flex-1 p-2 rounded-xl text-xs outline-none border transition-all ${
+                              isDark 
+                                ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-sky-500/50' 
+                                : 'bg-stone-50 border-stone-200 text-stone-900 shadow-sm focus:border-[#a67c52]/50'
+                            }`}
+                          />
+                          <button
+                            onClick={handleAddCustomQuote}
+                            disabled={isAddingQuote || !newQuoteInput.trim()}
+                            className="p-2 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-white font-extrabold cursor-pointer transition-all shrink-0 text-[10.5px]"
+                          >
+                            {isAddingQuote ? '存储中...' : '放入云库'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`p-3 rounded-xl border text-[10px] text-gray-400 leading-relaxed ${
+                      isDark ? 'bg-slate-900/40 border-slate-900' : 'bg-stone-550/10 border-stone-200/55 shadow-sm'
+                    }`}>
+                      当前运行在本地安全沙盒模式下。如果您拥有 Supabase 云数据库凭点，并希望持久安全保存您的纸本配餐和心流记录，请开启右侧“云端同步”，并在其界面下建立表单和注入 credentials 金匙。
+                    </div>
+                  )}
+
+                  {/* logs and backup status */}
+                  <div className={`p-2.5 rounded-lg border text-[9.5px] mt-3 ${
+                    isDark ? 'bg-slate-900/60 border-slate-900/80 text-gray-400' : 'bg-[#faf6ed]/60 border-[#ecdcb9]/50 text-[#857463]'
+                  } font-mono leading-relaxed`}>
+                    <span className="font-black block text-[8px] uppercase tracking-wide opacity-50 mb-0.5">云网同传管道状态:</span>
+                    {syncLogs}
+                  </div>
+
+                  {/* Schema SQL info box */}
+                  {dbMode === 'supabase' && (
+                    <div className={`p-2.5 rounded-lg border text-[9.5px] ${
+                      isDark ? 'bg-slate-900/80 border-slate-800 text-gray-400' : 'bg-[#faf6ed]/60 border-[#ecdcb9]/40 text-[#857463]'
+                    } font-sans text-justify mt-3`}>
+                      <p className="font-bold mb-1 text-emerald-500">💡 数据库表配置指南</p>
+                      请在您的 Supabase 控制台的 SQL Editor 中执行下述语句以建立语料库表格：
+                      <pre className="mt-1.5 p-2 bg-black/40 text-[8.5px] rounded border border-white/5 font-mono overflow-x-auto text-[#a6e22e] leading-normal select-all">
+{`create table book_quotes (
+  id bigint generated always as identity primary key,
+  quote text not null,
+  category text default 'general',
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+alter table book_quotes enable row level security;
+create policy "Allow public read-only" on book_quotes for select using (true);
+create policy "Allow public insert-only" on book_quotes for insert with check (true);`}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* SECONDARY WEBPAGE DIALOG COMPACT MODAL PANEL OVERLAY */}
       <AnimatePresence>
@@ -1470,9 +1630,18 @@ create policy "Allow public insert-only" on book_quotes for insert with check (t
                   <div className={`p-3 rounded-xl text-[11px] leading-relaxed transition-colors ${
                     isDark ? 'bg-slate-950/40 border-slate-900/40 text-gray-400' : 'bg-[#faf6ed] border-[#ecdcb9]/55 text-stone-600'
                   }`}>
-                    <p className="font-black text-[10px] opacity-75 mb-1 text-amber-500">📖 愈思写作建议：</p>
+                    <div className="flex justify-between items-center mb-1 text-amber-500">
+                      <p className="font-black text-[10px] opacity-75">📖 愈思写作建议：</p>
+                      <button
+                        onClick={handleRefreshPrompts}
+                        className="text-[8.5px] font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        id="refresh_prompts_btn"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" /> 换几句建议
+                      </button>
+                    </div>
                     <ul className="list-disc pl-3.5 space-y-1">
-                      {DIARY_PROMPTS.map((prompt, pi) => (
+                      {diaryPrompts.map((prompt, pi) => (
                         <li key={pi} className="cursor-pointer hover:text-amber-500" onClick={() => setDiaryInput(prev => prev + prompt)}>
                           {prompt}
                         </li>

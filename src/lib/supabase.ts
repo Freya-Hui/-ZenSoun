@@ -88,3 +88,54 @@ export async function addAnswerQuote(quote: string, category: string = 'general'
     return false;
   }
 }
+
+/**
+ * Fetch writing prompts dynamically from Supabase
+ */
+export async function fetchDiaryPrompts(): Promise<string[] | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('diary_prompts')
+      .select('prompt')
+      .order('id', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching Supabase diary_prompts:', error.message);
+      return null;
+    }
+
+    if (data && data.length > 0) {
+      return data.map((item: any) => item.prompt);
+    }
+  } catch (err) {
+    console.error('Supabase query prompts exception:', err);
+  }
+  return null;
+}
+
+/**
+ * Add a new writing prompt to Supabase
+ */
+export async function addDiaryPrompt(prompt: string): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase
+      .from('diary_prompts')
+      .insert([{ prompt }]);
+
+    if (error) {
+      console.error('Error inserting prompt to Supabase:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Exception adding prompt:', err);
+    return false;
+  }
+}
+
