@@ -21,14 +21,49 @@ class AudioEngine {
   // Custom melody parameters
   private pentatonic = [220.00, 246.94, 277.18, 329.63, 392.00, 440.00, 493.88, 554.37, 659.25, 783.99, 880.00];
 
+  // FLAC physical simulation filters
+  private isHighFidelity = false;
+  private eqHigh: BiquadFilterNode | null = null;
+  private eqLow: BiquadFilterNode | null = null;
+  private compressionLowpass: BiquadFilterNode | null = null;
+
+  // Custom sequences looper states
+  private customLoopIntervalId: any = null;
+  private isCustomLoopPlaying = false;
+  private customPitches: number[] = [];
+  private customInstrumentName: string = 'bowl';
+  private customSpeedMs = 450;
+  private customLoopStep = 0;
+
   init() {
     if (this.ctx) return;
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       this.ctx = new AudioContextClass();
+      
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.setValueAtTime(0.8, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
+
+      // Create EQ & compression simulation nodes for FLAC high fidelity toggles
+      this.eqHigh = this.ctx.createBiquadFilter();
+      this.eqHigh.type = 'highshelf';
+      this.eqHigh.frequency.setValueAtTime(8000, this.ctx.currentTime);
+      this.eqHigh.gain.setValueAtTime(0, this.ctx.currentTime); // flat by default
+
+      this.eqLow = this.ctx.createBiquadFilter();
+      this.eqLow.type = 'lowshelf';
+      this.eqLow.frequency.setValueAtTime(120, this.ctx.currentTime);
+      this.eqLow.gain.setValueAtTime(0, this.ctx.currentTime);  // flat by default
+
+      this.compressionLowpass = this.ctx.createBiquadFilter();
+      this.compressionLowpass.type = 'lowpass';
+      this.compressionLowpass.frequency.setValueAtTime(20000, this.ctx.currentTime); // bypass (20kHz)
+
+      // Connect nodes safely
+      this.masterGain.connect(this.eqHigh);
+      this.eqHigh.connect(this.eqLow);
+      this.eqLow.connect(this.compressionLowpass);
+      this.compressionLowpass.connect(this.ctx.destination);
     } catch (e) {
       console.error('Failed to initialize AudioContext', e);
     }
@@ -38,6 +73,61 @@ class AudioEngine {
     this.init();
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
+    }
+  }
+
+  setHighFidelity(enabled: boolean) {
+    this.ensureContext();
+    this.isHighFidelity = enabled;
+    if (!this.ctx || !this.eqHigh || !this.eqLow || !this.compressionLowpass) return;
+
+    const now = this.ctx.currentTime;
+    if (enabled) {
+      // High Fidelity: sparkle treble brilliance and rich, warm resonant bass
+      // This is dynamic spatial mastering - sounds incredibly clear and beautiful
+      this.eqHigh.gain.linearRampToValueAtTime(5.5, now + 0.6);
+      this.eqLow.gain.linearRampToValueAtTime(4.0, now + 0.6);
+      this.compressionLowpass.frequency.linearRampToValueAtTime(22000, now + 0.4);
+    } else {
+      // Standard Quality: simulating highly-compressed lossy streaming (64kbps MP3 limits)
+      // Muffle high frequencies and remove the warm bass resonance
+      this.eqHigh.gain.linearRampToValueAtTime(0, now + 0.6);
+      this.eqLow.gain.linearRampToValueAtTime(0, now + 0.6);
+      this.compressionLowpass.frequency.linearRampToValueAtTime(4500, now + 0.6); // heavily muffled high-frequencies!
+    }
+  }
+
+  // --- CUSTOM AUDIO SEQUENCES COHERENT LOOPER ---
+  playCustomPitchLoop(pitches: number[], instrument = 'bowl', speedMs = 450) {
+    this.ensureContext();
+    this.stopCustomPitchLoop();
+
+    this.customPitches = pitches;
+    this.customInstrumentName = instrument;
+    this.customSpeedMs = speedMs;
+    this.customLoopStep = 0;
+    this.isCustomLoopPlaying = true;
+
+    const runTick = () => {
+      if (!this.ctx || !this.isCustomLoopPlaying || this.customPitches.length === 0) return;
+      
+      const freq = this.customPitches[this.customLoopStep];
+      if (freq && freq > 0) {
+        this.playInstrumentNote(this.customInstrumentName, freq);
+      }
+      
+      this.customLoopStep = (this.customLoopStep + 1) % this.customPitches.length;
+    };
+
+    runTick();
+    this.customLoopIntervalId = setInterval(runTick, this.customSpeedMs);
+  }
+
+  stopCustomPitchLoop() {
+    this.isCustomLoopPlaying = false;
+    if (this.customLoopIntervalId) {
+      clearInterval(this.customLoopIntervalId);
+      this.customLoopIntervalId = null;
     }
   }
 
@@ -670,6 +760,7 @@ class AudioEngine {
   stopAll() {
     this.stopBrainwave();
     this.stopMelody();
+    this.stopCustomPitchLoop();
     Object.keys(this.channels).forEach(id => this.stopNoise(id));
   }
 }

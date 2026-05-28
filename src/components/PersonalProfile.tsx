@@ -3,9 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Sparkles, Sliders, Database, KeyRound, Check, RefreshCw, 
   Star, HelpCircle, Heart, Lock, Calendar, Trash2, Edit2, Smile, 
-  ChevronRight, Download, Plus, BookOpenCheck, RotateCw, X 
+  ChevronRight, Download, Plus, BookOpenCheck, RotateCw, X, Music,
+  Activity, TrendingUp, Cloud, DatabaseZap, HelpCircle as HelpIcon
 } from 'lucide-react';
-import { DiaryEntry, Profile, SoundRecipe } from '../types';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { DiaryEntry, Profile, SoundRecipe, UserCreation } from '../types';
+import { fetchAnswerQuotes, addAnswerQuote } from '../lib/supabase';
 
 interface ProfileProps {
   profile: Profile;
@@ -20,6 +23,11 @@ interface ProfileProps {
   theme?: 'day' | 'night';
   onUpdateProfile?: (updated: Partial<Profile>) => void;
   onLogOut?: () => void;
+  savedRecipes?: SoundRecipe[];
+  onDeleteRecipe?: (id: string) => void;
+  userCreations?: UserCreation[];
+  onDeleteCreation?: (id: string) => void;
+  onLoadCreation?: (creation: UserCreation) => void;
 }
 
 const BOOK_QUOTES = [
@@ -30,7 +38,38 @@ const BOOK_QUOTES = [
   "不要急于给出一个解释。顺应大自然的潮汐，潮涨潮落，皆是圆满的造化。",
   "生活如同一张精心编织的琴谱，时有错落。接纳遗憾与杂调，琴音方更儒雅清脆。",
   "静坐听雨，如饮清泉。把白日繁琐挂碍交付予清晨的微风与温软泥土。",
-  "最饱满的热情与生命力，往往藏在最深笃的寂静之中。今晚，安心入眠吧。"
+  "最饱满的热情与生命力，往往藏在最深笃的寂静之中。今晚，安心入眠吧。",
+  "致虚极，守静笃。万物并作，吾以观复。将心智倒回最初的空灵，当下便在疗愈之中。",
+  "行到水穷处，坐看云起时。生活并非总是寻找目的，有时随遇而安即是药石。",
+  "虚能生白，静极发光。你本自具足一切澄澈，无需向外借光以照亮内室的暗淡。",
+  "五音令人耳聋，五色令人目盲。于纷繁斑斓中洗涤耳根，片刻纯净的纯白杂音重于千言万语。",
+  "如水之清，万物照之。莫要在浑浊时频频搅动它，静置片刻，泥沙自然沉淀。",
+  "天地有大美而不言，四时有明法而不议。人身亦是一座小天地，冬藏夏长，顺天应人。",
+  "有些结无需拼命去解，交给时间。微风拂过湖面泛起波澜，而风定之后，水自会重归平静。",
+  "水唯能下方能成海，山能承厚方显庄严。温吞缓慢有时是比激烈前行更深邃的智慧。",
+  "让昨日的心事如凋谢的秋叶般坠入泥土，它不是消亡，而是为了孕育明春更丰饶的繁花。",
+  "人之所以不安，往往是因为站在了此刻却忧心着未来。只需守住此时的这口呼吸，便无风雨在身。",
+  "春有百花秋有月，夏有凉风冬有雪。若无闲事挂心头，便是人间好时节。",
+  "身如琉璃，内外明澈。将一切不甘与委屈，在温厚而空灵的颂钵颤鸣中缓缓震荡消融。",
+  "白露悄然凝于草叶，惊不破一梦黄粱。世间烦琐大多自扰，给心灵留白一寸，神魂便安宁一分。",
+  "气逆则滞，心宽则平。不要对外界的无常预设过多。松开紧抿的双唇，松开微耸的双肩，当下即是自由仙境。",
+  "莫听穿林打叶声，何妨吟啸且徐行。竹拂松涛，空谷足音，自然永远在包容并宽恕你的所有疲劳。",
+  "不期而遇的都是温暖，生生不息的才是希望。今晚的晚潮会抚平今天所有的褶皱，晚安。",
+  "水至清则无鱼，人至察则无徒。对自己多一分宽宏，对红尘留一分糊涂，神智自得其乐。",
+  "重为轻根，静为躁君。在外界大起大落的杂音面前，你的心跳便是世界上最稳健的鼓点。",
+  "千江有水千江月，万里无云万里天。每一束被折射的光华，都能在宁静的波纹里寻到归宿。",
+  "花盛时采摘，花落时掩埋。宇宙万物的荣枯皆是一曲优雅而富有弹性的自然律动。",
+  "世间喧嚣皆为过客，唯有此时的一吐一纳，是你与大地、微风最忠诚、最切近的盟约。",
+  "耳不染红尘之俗，目不迷乱世之光。播放一段流水虫鸣，将尘世的所有重量交付于漫漫长夜。",
+  "飘风不终朝，骤雨不终日。任何急剧的情绪如同一场骤雨，来时汹汹，但终究会有云开日照的清晨。",
+  "天下莫柔弱于水，而攻坚强者莫之能胜。学着像水一样流动、承载、绕行，身心自然柔顺无碍。",
+  "山风卷起落叶，宿鸟掠过寒潭。自然从不曾苛责任何生命的迟缓。安心歇息，今日已足够圆满。",
+  "在最幽暗的池沼里，也有沉睡的莲籽在积蓄醒来的力量。耐住寂寞，正是孕育清香的过程。",
+  "所谓烦恼，不过是心灵的水面泛起的一丝涟漪。你不去刻意撩拨，它自会逐渐收敛，复归明镜。",
+  "把攥紧的双手松开，你会发现，你拥抱了整个虚空与清风。放手不代表失去，而是真正的承载。",
+  "明月松间照，清泉石上流。山水之间的恬淡，非自然所独有，亦是你心湖中本自盛开的清凉。",
+  "一沙一世界，一花一天堂。闭上双眼，你意识所及的深远夜空，比宇宙苍穹更宽广和丰饶。",
+  "心有一隅，可安灵魂。在漫漫人生孤舟里，音疗便是你的那一盏昏黄却永不熄灭的防风温灯。"
 ];
 
 const MOOD_CHIPS = ['平静', '澄澈', '喜悦', '困顿', '烦愁', '安闲'];
@@ -52,8 +91,128 @@ export default function PersonalProfile({
   onApplyRecipe,
   theme = 'day',
   onUpdateProfile,
-  onLogOut
+  onLogOut,
+  savedRecipes = [],
+  onDeleteRecipe,
+  userCreations = [],
+  onDeleteCreation,
+  onLoadCreation
 }: ProfileProps) {
+  // Mood chart mapping scores
+  const MOOD_SCORES_MAP: Record<string, number> = {
+    '愉悦': 10,
+    '喜悦': 10,
+    '安闲': 9,
+    '澄澈': 8.5,
+    '平静': 7,
+    '疲惫': 5,
+    '困顿': 4.5,
+    '急躁': 4,
+    '焦虑': 3,
+    '烦愁': 2.5,
+    '抑郁': 1.5
+  };
+
+  const matchDiaryForDate = (diariesList: DiaryEntry[], targetDate: Date): DiaryEntry | undefined => {
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    
+    return diariesList.find(d => {
+      const dStr = d.date;
+      return dStr.includes(`${month}/${day}`) || 
+             dStr.includes(`${month}-${day}`) || 
+             dStr.includes(`${parseInt(month)}月${parseInt(day)}`) ||
+             dStr.includes(`${parseInt(month)}/${parseInt(day)}`);
+    });
+  };
+
+  // Generate 7-day mood timeline
+  const getChartData = () => {
+    const data = [];
+    const today = new Date();
+    
+    const isDemo = diaries.length === 0;
+    // Beautiful peaceful undulating wave for empty baseline demo
+    const demoScores = [7.2, 8.5, 6.8, 9.0, 7.5, 8.2, 8.8];
+    const demoMoods = ['平静', '澄澈', '疲惫', '安闲', '平静', '澄澈', '安闲'];
+    
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateLabel = `${month}/${day}`;
+      
+      const match = matchDiaryForDate(diaries, d);
+      let score = 7.0;
+      let moodName = '平静';
+      let realEntry = false;
+      
+      if (match) {
+        score = MOOD_SCORES_MAP[match.mood] || 7.0;
+        moodName = match.mood;
+        realEntry = true;
+      } else if (!isDemo) {
+        // If they have diary entries but none on this day, we default to average baseline or neutral
+        score = 7.0;
+        moodName = '平静';
+      } else {
+        score = demoScores[6 - i];
+        moodName = demoMoods[6 - i];
+      }
+      
+      data.push({
+        name: dateLabel,
+        '情绪能量': score,
+        mood: moodName,
+        isReal: realEntry
+      });
+    }
+    return { data, isDemo };
+  };
+
+  const { data: chartData, isDemo } = getChartData();
+
+  // Generate deep AI feedback advice card based on actual or demo values
+  const getTrendFeedback = () => {
+    if (isDemo) {
+      return {
+        title: "静修前瞻：AI 生态情绪走势",
+        advice: "当前展示近七日情绪波动图谱。点击上方的「打开今日心灵记录面板」描述您最真实的感觉，系统后台会自动分析情绪走势，在情绪曲线中沉淀珍贵的心灵指引，辅助本端输出深度诊疗反馈。",
+        badge: "预想中和"
+      };
+    }
+    
+    const scores = chartData.map(item => item['情绪能量']);
+    const lastScore = scores[scores.length - 1];
+    
+    let title = "心脉调理：AI 疗愈建议反馈";
+    let advice = "";
+    let badge = "气血和谐";
+    
+    if (lastScore <= 4.5) {
+      title = "心脉预警：AI 急性调摄药方";
+      advice = "检测到您最近的心态偏于急促或忧郁。此乃气机失固、郁阻中焦之症。建议即刻放下繁杂，静修 10 分钟「1:1:1 平衡调息法」，播放器将载入古磬钵长鸣音以驱赶燥热。";
+      badge = "焦虑烦隔";
+    } else if (lastScore < 7) {
+      title = "神疲乏力：AI 醒神舒压建议";
+      advice = "情绪呈疲惫状态。说明近日精神中轴过度损耗。建议于午后开展 5 分钟的「4:2:4 醒神苏能呼吸」，将音轨配比调高「竹涛风铃」，在自然微澜中徐徐聚气。";
+      badge = "气短身重";
+    } else if (lastScore >= 8.5) {
+      title = "安泰神怡：AI 完美状态期许";
+      advice = "完美！您当前心气安驻于「安闲」与「澄澈」太和之境，内室融通。建议睡前聆听一曲「极速入梦」并配合安息调息，持存通透无负累的生命振幅。";
+      badge = "澄心静泰";
+    } else {
+      title = "心平气和：AI 守诚中和心法";
+      advice = "您的心境当前处于平衡和中状态。无大喜大悲，正是中医学提倡的“恬淡虚无，真气从之”。每日用热茶一盏、古竖琴两曲把这种中和持存下去。";
+      badge = "中正平和";
+    }
+    
+    return { title, advice, badge };
+  };
+
+  const trendFeedback = getTrendFeedback();
+
   // Bio & user detail states
   const [userBio, setUserBio] = useState(() => localStorage.getItem('zensound_user_bio') || '行于喧嚣，休于心居。于呼吸长短间，寻声音药方。');
   const [userName, setUserName] = useState(() => localStorage.getItem('zensound_user_name') || profile.name);
@@ -86,6 +245,33 @@ export default function PersonalProfile({
   });
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncLogs, setSyncLogs] = useState<string>('存储保障：本机军工级沙盒 LocalStorage 加密备份');
+  const [newQuoteInput, setNewQuoteInput] = useState('');
+  const [isAddingQuote, setIsAddingQuote] = useState(false);
+  const [showDbConfig, setShowDbConfig] = useState(false);
+
+  const [dynamicQuotes, setDynamicQuotes] = useState<string[]>(BOOK_QUOTES);
+
+  useEffect(() => {
+    async function loadDynamicCorpus() {
+      if (dbMode === 'supabase' && supabaseUrl && supabaseAnonKey) {
+        setIsSyncing(true);
+        const fetched = await fetchAnswerQuotes();
+        if (fetched && fetched.length > 0) {
+          setDynamicQuotes(fetched);
+          setSyncLogs(`云端数据成功连通：当前自研库已载入 ${fetched.length} 条珍贵答案！`);
+        } else {
+          setDynamicQuotes(BOOK_QUOTES);
+          setSyncLogs('云端暂无数据或查询出错，已自动平滑降级至本端 35 条国风精选语料。');
+        }
+        setIsSyncing(false);
+      } else {
+        setDynamicQuotes(BOOK_QUOTES);
+      }
+    }
+    loadDynamicCorpus();
+  }, [dbMode, supabaseUrl, supabaseAnonKey]);
+
+  const [profileActiveTab, setProfileActiveTab] = useState<'recipes' | 'creations' | 'diaries'>('recipes');
 
   const isDark = theme === 'night';
 
@@ -137,7 +323,7 @@ export default function PersonalProfile({
       return;
     }
 
-    const quote = BOOK_QUOTES[selectedQuoteIndex];
+    const quote = dynamicQuotes[selectedQuoteIndex] || BOOK_QUOTES[selectedQuoteIndex];
     const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
     
     // Create a high resolution canvas
@@ -283,11 +469,34 @@ export default function PersonalProfile({
       localStorage.setItem('supabase_url', supabaseUrl);
       localStorage.setItem('supabase_key', supabaseAnonKey);
       setSyncLogs('云端数据安全同步管道已连通，数据采用密匙传输保护。');
+      alert('⚡ Supabase 数据库管道已连接成功！语料库已启动实时拉取。');
     } else {
       localStorage.removeItem('supabase_url');
       localStorage.removeItem('supabase_key');
       setSyncLogs('已断开云连接。数据已完全收缩储存于本地安全沙盒。');
+      alert('已断开 Supabase 云端并清空凭据，已切换至内置本端 35 条国风精选语料。');
     }
+  };
+
+  const handleAddCustomQuote = async () => {
+    if (!newQuoteInput.trim()) return;
+    if (dbMode !== 'supabase') {
+      alert('请先将下方数据库模式切换为 Supabase 并填入完整配置凭证！');
+      return;
+    }
+    setIsAddingQuote(true);
+    const ok = await addAnswerQuote(newQuoteInput.trim());
+    if (ok) {
+      alert('🎉 句签已成功上架 Supabase 数据库！已实时刷新本地答案之书！');
+      setNewQuoteInput('');
+      const fetched = await fetchAnswerQuotes();
+      if (fetched && fetched.length > 0) {
+        setDynamicQuotes(fetched);
+      }
+    } else {
+      alert('上传失败，请确认您已在 Supabase 中运行配套 SQL、创建并赋予 book_quotes 表公有(anonymous/anon)读写权限。');
+    }
+    setIsAddingQuote(false);
   };
 
   const handleManualSync = () => {
@@ -348,7 +557,7 @@ export default function PersonalProfile({
   };
 
   const openAnswersBook = () => {
-    const idx = Math.floor(Math.random() * BOOK_QUOTES.length);
+    const idx = Math.floor(Math.random() * dynamicQuotes.length);
     setSelectedQuoteIndex(idx);
     setIsBookOpened(true);
   };
@@ -368,12 +577,12 @@ export default function PersonalProfile({
             <div 
               onClick={() => setShowAvatarPicker(!showAvatarPicker)}
               className={`w-12 h-12 rounded-full border flex items-center justify-center font-bold text-xl select-none shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all relative ${
-                isDark ? 'bg-slate-800 border-sky-400/30' : 'bg-stone-100 border-stone-300/80 text-stone-800'
+                isDark ? 'bg-slate-800 border-amber-500/30' : 'bg-stone-100 border-stone-300/80 text-stone-800'
               }`}
               title="点击更换修行头像"
             >
               {profile.avatar}
-              <div className="absolute -bottom-1 -right-1 bg-sky-500 text-white rounded-full p-0.5 shadow">
+              <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow">
                 <Edit2 className="w-2 h-2" />
               </div>
             </div>
@@ -392,7 +601,7 @@ export default function PersonalProfile({
                       }
                       setShowAvatarPicker(false);
                     }}
-                    className="w-8 h-8 rounded-full hover:bg-sky-500/10 flex items-center justify-center text-lg cursor-pointer border border-transparent hover:border-sky-500/20 active:scale-90 transition-all font-sans"
+                    className="w-8 h-8 rounded-full hover:bg-amber-500/10 flex items-center justify-center text-lg cursor-pointer border border-transparent hover:border-amber-500/20 active:scale-90 transition-all font-sans"
                   >
                     {av}
                   </button>
@@ -413,19 +622,19 @@ export default function PersonalProfile({
                         isDark ? 'bg-slate-950 border-slate-700 text-white' : 'bg-stone-50 border-stone-350 text-stone-900'
                       }`}
                     />
-                    <button onClick={handleSaveName} className="text-[10px] text-sky-500 font-bold hover:underline cursor-pointer">保存</button>
+                    <button onClick={handleSaveName} className="text-[10px] text-amber-500 font-bold hover:underline cursor-pointer">保存</button>
                   </div>
                 ) : (
                   <span className="text-sm font-extrabold flex items-center gap-1 font-sans">
                     {userName}
                     {!isGuest && (
-                      <Edit2 className="w-3 h-3 text-gray-500 hover:text-sky-500 cursor-pointer" onClick={() => setIsEditingName(true)} />
+                    <Edit2 className="w-3 h-3 text-gray-500 hover:text-amber-500 cursor-pointer" onClick={() => setIsEditingName(true)} />
                     )}
                   </span>
                 )}
 
                 {isGuest ? (
-                  <span className="px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-sky-500/10 text-sky-450 border border-sky-500/35 font-sans animate-pulse">
+                  <span className="px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/25 font-sans animate-pulse">
                     游客状态
                   </span>
                 ) : isPremiumUser ? (
@@ -450,7 +659,7 @@ export default function PersonalProfile({
           {isGuest ? (
             <button
               onClick={onLogOut}
-              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-indigo-650 text-white font-extrabold text-[10.5px] shadow-sm hover:from-sky-400 hover:to-indigo-550 transition-all cursor-pointer font-sans"
+              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-700 text-white font-extrabold text-[10.5px] shadow-sm hover:from-amber-400 hover:to-amber-800 transition-all cursor-pointer font-sans"
             >
               新客登录
             </button>
@@ -467,12 +676,12 @@ export default function PersonalProfile({
         {isGuest && (
           <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-left transition-all ${
             isDark 
-              ? 'bg-sky-950/20 border-sky-500/20 text-sky-300' 
-              : 'bg-sky-50/85 border-sky-100 text-sky-850'
+              ? 'bg-amber-950/20 border-amber-500/20 text-amber-300' 
+              : 'bg-amber-50/15 border-amber-200 text-amber-850'
           }`}>
             <div className="flex-1 space-y-0.5">
               <p className="text-xs font-bold font-sans flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-ping" />
+                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
                 修心之旅 • 尚未绑定
               </p>
               <p className="text-[10px] leading-relaxed opacity-80">
@@ -481,7 +690,7 @@ export default function PersonalProfile({
             </div>
             <button
               onClick={onLogOut}
-              className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-white text-[10.5px] font-extrabold shadow cursor-pointer transition-all self-center shrink-0"
+              className="px-3 py-1.5 rounded-lg bg-[#a67c52] hover:bg-[#8e6b46] text-white text-[10.5px] font-extrabold shadow cursor-pointer transition-all self-center shrink-0"
             >
               去登录/注册
             </button>
@@ -505,13 +714,13 @@ export default function PersonalProfile({
               />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setIsEditingBio(false)} className="text-[10px] text-gray-500 hover:underline cursor-pointer">取消</button>
-                <button onClick={handleSaveBio} className="text-[10px] text-sky-500 font-bold hover:underline cursor-pointer">保存说明</button>
+                <button onClick={handleSaveBio} className="text-[10px] text-[#a67c52] font-bold hover:underline cursor-pointer">保存说明</button>
               </div>
             </div>
           ) : (
             <p className="flex justify-between items-start gap-3">
               <span className="italic">&ldquo;{userBio}&rdquo;</span>
-              <button onClick={() => setIsEditingBio(true)} className="text-[9.5px] font-bold text-sky-500 hover:underline cursor-pointer shrink-0 mt-0.5">修改一句话</button>
+              <button onClick={() => setIsEditingBio(true)} className="text-[9.5px] font-bold text-[#a67c52] hover:underline cursor-pointer shrink-0 mt-0.5">修改一句话</button>
             </p>
           )}
         </div>
@@ -519,7 +728,7 @@ export default function PersonalProfile({
         {/* Emotion States Chips Widget on Profile Card */}
         <div className="border-t border-dashed border-gray-500/10 pt-2.5">
           <p className={`text-[10px] font-bold mb-1.5 flex items-center gap-1 ${isDark ? 'text-gray-400' : 'text-stone-550'}`}>
-            <Smile className="w-3.5 h-3.5 text-sky-400" />
+            <Smile className="w-3.5 h-3.5 text-amber-500" />
             <span>今日心情卡：</span>
           </p>
           <div className="flex flex-wrap gap-1">
@@ -531,7 +740,7 @@ export default function PersonalProfile({
                   onClick={() => handleSelectMood(mood)}
                   className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-sky-500/15 border-sky-500/40 text-sky-500 font-bold'
+                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 font-bold'
                       : isDark
                         ? 'bg-slate-900/60 border-transparent text-gray-500 hover:text-gray-300'
                         : 'bg-stone-100 border-transparent text-stone-500 hover:text-stone-800'
@@ -549,7 +758,7 @@ export default function PersonalProfile({
       <div className={`p-4 rounded-2xl border text-center flex flex-col gap-2 transition-all ${
         isDark ? 'bg-slate-950/60 border-slate-900 shadow-lg' : 'bg-white border-stone-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
       }`} id="record_starter_box">
-        <div className="flex items-center justify-center gap-1 text-sky-500 mb-1">
+        <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
           <Sparkles className="w-5 h-5 animate-pulse" />
           <h3 className="text-xs font-black tracking-wider uppercase font-sans">心流记录岛</h3>
         </div>
@@ -565,7 +774,7 @@ export default function PersonalProfile({
           }}
           className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ring-offset-2 hover:opacity-90 active:scale-98 ${
             isDark 
-              ? 'bg-gradient-to-r from-sky-600 to-indigo-700 text-white shadow-lg shadow-sky-950/20' 
+              ? 'bg-gradient-to-r from-[#a67c52] to-amber-700 text-white shadow-lg shadow-amber-950/20' 
               : 'bg-stone-900 text-white shadow-md shadow-stone-950/10'
           }`}
         >
@@ -578,9 +787,9 @@ export default function PersonalProfile({
       {/* 2.5 AI RESPONSE FLOATING PRESCRIPTION (STAYS AS CORR FEEDBACK) */}
       {latestAiLetter && (
         <div className={`p-4 rounded-xl border transition-all ${
-          isDark ? 'border-sky-500/30 bg-slate-950/50' : 'border-sky-300 bg-sky-50/40 text-stone-900 shadow-sm'
+          isDark ? 'border-amber-500/30 bg-slate-950/50' : 'border-[#ecdcb9] bg-[#faf6ed] text-stone-900 shadow-sm'
         }`}>
-          <div className="flex items-center gap-1.5 mb-2 text-sky-600">
+          <div className="flex items-center gap-1.5 mb-2 text-[#a67c52]">
             <Sparkles className="w-4 h-4 animate-pulse" />
             <span className="text-[10.5px] font-extrabold">心灵私塾 • AI诊断出方</span>
           </div>
@@ -594,7 +803,7 @@ export default function PersonalProfile({
             </div>
             <button
               onClick={handleLoadAiFormula}
-              className="px-2.5 py-1 text-[10.5px] font-bold bg-sky-500 text-white rounded cursor-pointer"
+              className="px-2.5 py-1 text-[10.5px] font-bold bg-[#a67c52] text-white rounded cursor-pointer"
             >
               立刻载入试听
             </button>
@@ -602,76 +811,525 @@ export default function PersonalProfile({
         </div>
       )}
 
-      {/* 3. HISTORY OF DIARIES (WITH ADAPTIVE DESIGN) */}
-      {diaries.length > 0 && (
-        <div className={`rounded-xl border p-4 transition-all ${
-          isDark ? 'bg-[#0f172a]/40 border-slate-900' : 'bg-white border-stone-200/80 shadow-sm'
+      {/* 3. MY COMPREHENSIVE HEALING PRACTICE SPACE (TABS WIDGET) */}
+      <div className={`rounded-2xl border p-4 transition-all ${
+        isDark ? 'bg-[#0f172a]/40 border-slate-900/80 shadow-lg' : 'bg-white border-stone-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)]'
+      }`} id="personal_healing_workspace_tabs">
+        {/* Tab Headers */}
+        <div className={`grid grid-cols-3 p-1 rounded-xl mb-4 text-[10.5px] font-extrabold font-sans select-none ${
+          isDark ? 'bg-slate-950/70' : 'bg-stone-100/80'
         }`}>
-          <p className="text-[11px] font-extrabold mb-3 flex items-center justify-between">
-            <span className={isDark ? 'text-gray-400' : 'text-stone-500'}>心灵印记（近 {diaries.length} 篇反思本）</span>
-            <Trash2 
-              className={`w-3.5 h-3.5 transition-colors cursor-pointer hover:text-rose-500 ${isDark ? 'text-slate-700' : 'text-stone-300'}`} 
-              onClick={() => {
-                if (confirm('确定要清除所有本地反思吗？此操作无法撤销。')) {
-                  localStorage.removeItem('healing_diaries');
-                  window.location.reload();
-                }
-              }} 
-              title="清除反思" 
-            />
-          </p>
+          <button
+            onClick={() => setProfileActiveTab('recipes')}
+            className={`py-1.5 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+              profileActiveTab === 'recipes'
+                ? isDark ? 'bg-slate-900 text-amber-500 border border-slate-800' : 'bg-white text-[#a67c52] shadow-sm'
+                : isDark ? 'text-gray-500' : 'text-stone-500'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5 shrink-0" />
+            <span>我的配方库 ({savedRecipes.length})</span>
+          </button>
+          
+          <button
+            onClick={() => setProfileActiveTab('creations')}
+            className={`py-1.5 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+              profileActiveTab === 'creations'
+                ? isDark ? 'bg-slate-900 text-amber-500 border border-slate-800' : 'bg-white text-[#a67c52] shadow-sm'
+                : isDark ? 'text-gray-500' : 'text-stone-500'
+            }`}
+          >
+            <Music className="w-3.5 h-3.5 shrink-0" />
+            <span>创作中心 ({userCreations.length})</span>
+          </button>
+          
+          <button
+            onClick={() => setProfileActiveTab('diaries')}
+            className={`py-1.5 rounded-lg cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+              profileActiveTab === 'diaries'
+                ? isDark ? 'bg-slate-900 text-amber-500 border border-slate-800' : 'bg-white text-[#a67c52] shadow-sm'
+                : isDark ? 'text-gray-500' : 'text-stone-500'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+            <span>日签反思 ({diaries.length})</span>
+          </button>
+        </div>
 
-          <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5" id="diary_history_timeline">
-            {diaries.map(diary => (
-              <div 
-                key={diary.id}
-                className={`p-3 rounded-xl border transition-all text-xs font-sans relative ${
-                  isDark 
-                    ? 'bg-slate-950/60 border-slate-900 text-gray-300' 
-                    : 'bg-stone-50 border-stone-200/50 text-stone-900 shadow-sm'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-1 text-[9.5px] opacity-50">
-                  <span className="flex items-center gap-1 font-mono">
-                    <Calendar className="w-3 h-3" /> {diary.date}
-                  </span>
-                  <span className={`px-1 rounded ${isDark ? 'bg-slate-900 text-sky-400' : 'bg-stone-200/60 text-stone-700'}`}>
-                    感觉: {diary.mood}
+        {/* Tab Content Panels */}
+        <div className="min-h-[220px]">
+          {/* A. MY SAVED RECIPES */}
+          {profileActiveTab === 'recipes' && (
+            <div className="space-y-2.5">
+              {savedRecipes.length === 0 ? (
+                <div className="py-8 text-center px-4">
+                  <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
+                    暂无收藏配方。可前往「音能混配」栏目调谐属于您气血的专属自然白噪音混音并保存，或到生命讨论广场一键收藏他人的疗愈经验设计。
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5">
+                  {savedRecipes.map(recipe => (
+                    <div
+                      key={recipe.id}
+                      className={`p-3 rounded-xl border relative transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-sans ${
+                        isDark ? 'bg-slate-950/60 border-slate-900' : 'bg-stone-550/10 border-stone-200/50 shadow-sm'
+                      }`}
+                    >
+                      <div className="pr-8 flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-[12px] text-[#8e6b46]">{recipe.name}</span>
+                          <span className={`text-[8px] px-1 rounded font-normal ${
+                            isDark ? 'bg-slate-900 text-gray-500' : 'bg-white text-stone-500 border border-stone-200'
+                          }`}>
+                            by {recipe.creator}
+                          </span>
+                        </div>
+                        <p className={`text-[9.5px] mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
+                          {recipe.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                        <button
+                          onClick={() => onApplyRecipe(recipe)}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                            isDark
+                              ? 'bg-slate-950 hover:bg-slate-800 text-cyan-400 border border-slate-800'
+                              : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-sm'
+                          }`}
+                        >
+                          载入混配
+                        </button>
+                        
+                        {onDeleteRecipe && (
+                          <button
+                            onClick={() => onDeleteRecipe(recipe.id)}
+                            className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
+                              isDark ? 'text-slate-600' : 'text-stone-300'
+                            }`}
+                            title="从收藏名册中移除"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* B. MY CREATION CENTER */}
+          {profileActiveTab === 'creations' && (
+            <div className="space-y-2.5">
+              {userCreations.length === 0 ? (
+                <div className="py-8 text-center px-4">
+                  <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
+                    暂无谱曲创作记录。点击主页下方的「疗愈音频创作」进入大屏拼轨界面，通过点选声带节点与节拍即可轻松拼接旋律，曲谱会自动记录在此。
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-0.5">
+                  {userCreations.map(creation => (
+                    <div
+                      key={creation.id}
+                      className={`p-3 rounded-xl border relative transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-sans ${
+                        isDark ? 'bg-slate-950/60 border-slate-900' : 'bg-stone-550/10 border-stone-200/50 shadow-sm'
+                      }`}
+                    >
+                      <div className="pr-8 flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-[12px] text-[#8e6b46]">{creation.name}</span>
+                          <span className={`text-[8.5px] px-1 rounded font-normal bg-amber-500/10 text-amber-600 border border-amber-500/20`}>
+                            {creation.instrumentLabel}
+                          </span>
+                        </div>
+                        <div className={`text-[9px] mt-1 space-x-2 font-mono flex items-center ${isDark ? 'text-slate-500' : 'text-stone-505'}`}>
+                          <span>共 {creation.barCount} 小节编轨</span>
+                          <span>•</span>
+                          <span>节点数: {creation.totalNotes} 点</span>
+                          <span>•</span>
+                          <span>速度: {creation.bpm} 拍/分</span>
+                        </div>
+                        <span className="text-[7.5px] font-mono text-gray-400 block mt-1">保存时间: {creation.date}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                        <button
+                          onClick={() => onLoadCreation && onLoadCreation(creation)}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                            isDark
+                              ? 'bg-slate-950 hover:bg-slate-800 text-emerald-400 border border-slate-800'
+                              : 'bg-emerald-600 hover:bg-emerald-750 text-white shadow-sm'
+                          }`}
+                        >
+                          载入琴谱
+                        </button>
+                        
+                        {onDeleteCreation && (
+                          <button
+                            onClick={() => onDeleteCreation(creation.id)}
+                            className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
+                              isDark ? 'text-slate-600' : 'text-stone-300'
+                            }`}
+                            title="永久删除曲谱档案"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* C. MY REFLECTION LOGS (DIARIES) */}
+          {profileActiveTab === 'diaries' && (
+            <div className="space-y-4">
+              {/* BRAND NEW MOOD TREND LINE CHART CARD */}
+              <div className={`p-4 rounded-2xl border font-sans text-left transition-all relative overflow-hidden ${
+                isDark 
+                  ? 'bg-slate-950/60 border-slate-900 shadow-inner' 
+                  : 'bg-white border-stone-250/70 shadow-[0_4px_20px_rgba(0,0,0,0.015)]'
+              }`}>
+                {/* Header elements */}
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'} animate-pulse`} />
+                    <span className={`text-[12px] font-black ${isDark ? 'text-gray-200' : 'text-stone-850'}`}>
+                      七日情绪能量走势 {isDemo && <span className="text-[9.5px] opacity-50 font-normal font-sans">(静修基准演示)</span>}
+                    </span>
+                  </div>
+                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                    isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-[#a67c52]/10 text-[#a67c52]'
+                  }`}>
+                    {trendFeedback.badge}
                   </span>
                 </div>
+                
+                {/* Recharts responsive plot */}
+                <div className="w-full h-36 mt-1 mb-2 font-mono" id="recharts_mood_flow">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={chartData}
+                      margin={{ top: 5, right: 10, left: -28, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={isDark ? "#f59e0b" : "#a67c52"} stopOpacity={0.25}/>
+                          <stop offset="95%" stopColor={isDark ? "#f59e0b" : "#a67c52"} stopOpacity={0.0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"} />
+                      <XAxis 
+                        dataKey="name" 
+                        tickLine={false} 
+                        axisLine={false}
+                        tick={{ fill: isDark ? '#64748b' : '#857463', fontSize: 9 }}
+                      />
+                      <YAxis 
+                        domain={[1, 10]} 
+                        tickLine={false} 
+                        axisLine={false}
+                        tickCount={5}
+                        tick={{ fill: isDark ? '#64748b' : '#857463', fontSize: 9 }}
+                      />
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const val = payload[0].value;
+                            const d = payload[0].payload;
+                            return (
+                              <div className={`p-2 rounded-lg border text-[10px] font-sans ${
+                                isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-stone-200 text-stone-900 shadow-md'
+                              }`}>
+                                <p className="font-bold font-mono">日期: {d.name}</p>
+                                <p className="text-amber-500 font-black">情绪: {d.mood} ({val}分)</p>
+                                <p className="text-[8px] opacity-40">{d.isReal ? '本端密存日记' : '静坐基线估量'}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="情绪能量" 
+                        stroke={isDark ? "#f59e0b" : "#a67c52"} 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorMood)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
 
-                <p className="leading-relaxed text-[11px]">{diary.content}</p>
+                {/* Vertical helper guidance index text */}
+                <div className="flex justify-between items-center text-[8.5px] text-gray-500 font-sans border-t border-dashed border-gray-500/10 pt-1.5 px-1 mb-2">
+                  <span>低落/紧绷 (1-4分)</span>
+                  <span>平静/中和 (5-8分)</span>
+                  <span>神泰澄澈 (9-10分)</span>
+                </div>
 
-                {diary.aiResponse && (
-                  <p className={`text-[10px] italic p-1.5 rounded mt-2 border-l-2 ${
-                    isDark 
-                      ? 'bg-sky-950/15 border-cyan-500/40 text-cyan-400' 
-                      : 'bg-sky-50 border-sky-300 text-sky-850'
-                  }`}>
-                    导师赠言: {diary.aiResponse.feedback}
+                {/* Custom AI Advice Card Container */}
+                <div className={`p-2.5 rounded-xl border font-sans ${
+                  isDark ? 'bg-slate-900/30 border-slate-900/80 text-gray-400' : 'bg-[#faf6ed]/60 border-[#ecdcb9]/45 text-[#5c4033] shadow-inner'
+                }`}>
+                  <p className={`text-[10.5px] font-black mb-1 flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'}`}>
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    {trendFeedback.title}
                   </p>
-                )}
+                  <p className="text-[9.5px] leading-relaxed text-justify opacity-85">
+                    {trendFeedback.advice}
+                  </p>
+                </div>
               </div>
-            ))}
-          </div>
 
-          {/* 5. LOGOUT CONTROL BUTTON */}
-          {onLogOut && (
-            <div className="mt-4 pt-3 border-t border-dashed border-gray-500/10 flex justify-center">
-              <button
-                onClick={onLogOut}
-                className={`w-full py-2.5 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                  isDark 
-                    ? 'bg-red-500/5 text-red-500 border-red-500/15 hover:bg-red-500/10' 
-                    : 'bg-red-50 text-red-700 border-red-200/50 hover:bg-red-100'
-                }`}
-              >
-                退出当前静修法号
-              </button>
+              {/* Sub-label heading for historic list */}
+              <div className="flex items-center justify-between text-[10.5px] font-black px-1">
+                <span className="flex items-center gap-1 text-gray-505 font-sans">
+                  <BookOpen className="w-3.5 h-3.5 text-sky-500" /> 历史反思日记名录 ({diaries.length})
+                </span>
+                <span className="text-[8.5px] text-gray-400 font-mono">
+                  AES-255 本地密存
+                </span>
+              </div>
+
+              {/* ORIGINAL LIST OF DIARIES */}
+              {diaries.length === 0 ? (
+                <div className="py-6 text-center px-4 border border-dashed rounded-xl border-gray-400/25">
+                  <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
+                    心灵净地尚无印记。点击上方的「打开今日心灵记录面板」写写您的喜怒哀意，系统随后会在此展示实存平滑情绪变化指数。
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-0.5">
+                  {diaries.map(diary => (
+                    <div 
+                      key={diary.id}
+                      className={`p-3 rounded-xl border transition-all text-xs font-sans relative ${
+                        isDark 
+                          ? 'bg-slate-950/60 border-slate-900 text-gray-300' 
+                          : 'bg-stone-50 border-stone-200/50 text-stone-900 shadow-sm'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1 text-[9.5px] opacity-50">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Calendar className="w-3 h-3" /> {diary.date}
+                        </span>
+                        <span className={`px-1 rounded ${isDark ? 'bg-slate-900 text-sky-45 shrink-0' : 'bg-stone-200/60 text-stone-700 shrink-0'}`}>
+                          感觉: {diary.mood}
+                        </span>
+                      </div>
+
+                      <p className="leading-relaxed text-[11px] text-justify">{diary.content}</p>
+
+                      {diary.aiResponse && (
+                        <p className={`text-[10px] italic p-1.5 rounded mt-2 border-l-2 ${
+                          isDark 
+                            ? 'bg-sky-950/15 border-cyan-500/40 text-cyan-400' 
+                            : 'bg-sky-50 border-sky-300 text-sky-850'
+                        }`}>
+                          导师赠言: {diary.aiResponse.feedback}
+                        </p>
+                      )}
+                      
+                      <button
+                        onClick={() => onDeleteDiary(diary.id)}
+                        className={`absolute top-2 right-2 p-1 rounded hover:text-rose-500 transition-colors ${
+                          isDark ? 'text-slate-600' : 'text-stone-300'
+                        }`}
+                        title="删除此随心随笔"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+
+        {/* SUPABASE CLOUD MANAGEMENT EXPANSION PANEL */}
+        <div className={`mt-4 p-4 rounded-2xl border text-left font-sans transition-all relative ${
+          isDark 
+            ? 'bg-slate-950/40 border-slate-900 shadow-inner text-gray-300' 
+            : 'bg-white border-stone-200 shadow-sm text-stone-900'
+        }`}>
+          <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => setShowDbConfig(!showDbConfig)}>
+            <div className="flex items-center gap-2">
+              <DatabaseZap className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'} ${isSyncing ? 'animate-bounce' : ''}`} />
+              <span className="text-[12px] font-black tracking-tight flex items-center gap-1.5">
+                Supabase 语料库云端同步面板
+                {dbMode === 'supabase' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+              </span>
+            </div>
+            <span className="text-[10.5px] text-gray-500 hover:text-gray-300 transition-colors">
+              {showDbConfig ? '收起 ▴' : '展开管理 ▾'}
+            </span>
+          </div>
+
+          {showDbConfig && (
+            <div className="mt-3.5 space-y-3.5 border-t border-dashed border-gray-500/10 pt-3">
+              {/* Database type switcher toggle */}
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-gray-400 font-sans">数据来源状态:</span>
+                <div className={`flex p-0.5 rounded-lg border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-stone-100 border-stone-200'}`}>
+                  <button
+                    onClick={() => { setDbMode('local'); localStorage.removeItem('supabase_url'); localStorage.removeItem('supabase_key'); }}
+                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${
+                      dbMode === 'local' 
+                        ? 'bg-sky-500 text-white shadow-sm' 
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    本地预设 (35条)
+                  </button>
+                  <button
+                    onClick={() => setDbMode('supabase')}
+                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${
+                      dbMode === 'supabase' 
+                        ? 'bg-emerald-500 text-white shadow-sm' 
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    Supabase 实时云库
+                  </button>
+                </div>
+              </div>
+
+              {dbMode === 'supabase' ? (
+                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="space-y-2.5 text-[11px]">
+                  {/* Inputs */}
+                  <div>
+                    <label className="block text-gray-400 font-medium mb-1 font-sans">VITE_SUPABASE_URL</label>
+                    <input
+                      type="text"
+                      value={supabaseUrl}
+                      onChange={(e) => setSupabaseUrl(e.target.value)}
+                      placeholder="https://your-project.supabase.co"
+                      className={`w-full p-2 rounded-xl text-xs font-mono outline-none border transition-all ${
+                        isDark 
+                          ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-emerald-500/50' 
+                          : 'bg-stone-50 border-stone-200 text-stone-900 focus:border-[#a67c52]/50 shadow-inner'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 font-medium mb-1 font-sans">VITE_SUPABASE_ANON_KEY</label>
+                    <input
+                      type="password"
+                      value={supabaseAnonKey}
+                      onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                      placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+                      className={`w-full p-2 rounded-xl text-xs font-mono outline-none border transition-all ${
+                        isDark 
+                          ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-emerald-500/50' 
+                          : 'bg-stone-50 border-stone-200 text-stone-900 focus:border-[#a67c52]/50 shadow-inner'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveDbSettings}
+                      className="w-full py-2 text-[10.5px] font-black bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl shadow transition-all cursor-pointer text-center"
+                    >
+                      测试 & 保存连接
+                    </button>
+                  </div>
+
+                  {/* Add dynamic quotes input to database */}
+                  <div className="border-t border-dashed border-gray-400/20 pt-3 mt-1 text-[11px]">
+                    <span className="font-extrabold text-[#a67c52] dark:text-amber-400 flex items-center gap-1 mb-1.5">
+                      <Plus className="w-3.5 h-3.5 text-emerald-500" /> 上传新纸签至 Supabase 语料库
+                    </span>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={newQuoteInput}
+                        onChange={(e) => setNewQuoteInput(e.target.value)}
+                        placeholder="写下一句您想要的国风心灵笺言..."
+                        className={`flex-1 p-2 rounded-xl text-xs outline-none border transition-all ${
+                          isDark 
+                            ? 'bg-slate-900 border-slate-800 text-gray-100 focus:border-sky-500/50' 
+                            : 'bg-stone-50 border-stone-200 text-stone-900 shadow-sm focus:border-[#a67c52]/50'
+                        }`}
+                      />
+                      <button
+                        onClick={handleAddCustomQuote}
+                        disabled={isAddingQuote || !newQuoteInput.trim()}
+                        className="p-2 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-white font-extrabold cursor-pointer transition-all shrink-0 text-[10.5px]"
+                      >
+                        {isAddingQuote ? '存储中...' : '放入云库'}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <div className={`p-2.5 rounded-lg border text-[10px] text-gray-400 ${
+                  isDark ? 'bg-slate-900/40 border-slate-900' : 'bg-stone-50 border-stone-200'
+                }`}>
+                  当前运行在本地沙盒模式。如果您想启用 Supabase，请选择右侧开关，并在数据库中建立表和输入您的凭证密匙。
+                </div>
+              )}
+
+              {/* logs and backup status */}
+              <div className={`p-2 rounded-lg border text-[9.5px] ${
+                isDark ? 'bg-slate-900/60 border-slate-900/80 text-gray-400' : 'bg-[#faf6ed]/60 border-[#ecdcb9]/50 text-[#857463]'
+              } font-sans leading-relaxed`}>
+                <span className="font-black block text-[9px] uppercase tracking-wide opacity-50 mb-0.5">当前云管道状态:</span>
+                {syncLogs}
+              </div>
+
+              {/* Schema SQL info box */}
+              {dbMode === 'supabase' && (
+                <div className={`p-2.5 rounded-lg border text-[9.5px] ${
+                  isDark ? 'bg-emerald-950/15 border-emerald-900/40 text-emerald-300' : 'bg-emerald-50 border-emerald-100 text-emerald-800'
+                } font-sans text-justify mt-2`}>
+                  <p className="font-bold mb-1">💡 数据库表配置指南</p>
+                  请在您的 Supabase 控制台的 SQL Editor 中执行下述语句以建立语料库表格：
+                  <pre className="mt-1.5 p-2 bg-black/40 text-[8.5px] rounded border border-white/5 font-mono overflow-x-auto text-[#a6e22e] leading-normal select-all">
+{`create table book_quotes (
+  id bigint generated always as identity primary key,
+  quote text not null,
+  category text default 'general',
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 开启安全并启用公有(anon)读取与插入权限 Policies
+alter table book_quotes enable row level security;
+create policy "Allow public read-only" on book_quotes for select using (true);
+create policy "Allow public insert-only" on book_quotes for insert with check (true);`}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 5. LOGOUT CONTROL BUTTON */}
+        {onLogOut && (
+          <div className="mt-4 pt-3 border-t border-dashed border-gray-500/10 flex justify-center">
+            <button
+              onClick={onLogOut}
+              className={`w-full py-2.5 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                isDark 
+                  ? 'bg-red-500/5 text-red-500 border-red-500/15 hover:bg-red-500/10' 
+                  : 'bg-red-50 text-red-700 border-red-200/50 hover:bg-red-100'
+              }`}
+            >
+              退出当前静修法号
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* 4. CLOUD PIPELINE (REMOVED FROM UI TO PRESERVE SIMPLICITY) */}
 
@@ -773,7 +1431,7 @@ export default function PersonalProfile({
                       </div>
 
                       <div className="my-8 text-[15.5px] leading-relaxed text-center font-serif text-justify italic font-medium">
-                        &ldquo; {BOOK_QUOTES[selectedQuoteIndex]} &rdquo;
+                        &ldquo; {dynamicQuotes[selectedQuoteIndex] || BOOK_QUOTES[selectedQuoteIndex]} &rdquo;
                       </div>
 
                       <div className="border-t border-dashed border-gray-400/20 pt-4 flex justify-between items-center text-[10px] text-gray-400 font-sans tracking-wide">
@@ -810,12 +1468,12 @@ export default function PersonalProfile({
                 <div className="space-y-4">
                   {/* Guidelines Box */}
                   <div className={`p-3 rounded-xl text-[11px] leading-relaxed transition-colors ${
-                    isDark ? 'bg-slate-950/40 border-slate-900/40 text-gray-400' : 'bg-stone-50 border-stone-200 text-stone-600'
+                    isDark ? 'bg-slate-950/40 border-slate-900/40 text-gray-400' : 'bg-[#faf6ed] border-[#ecdcb9]/55 text-stone-600'
                   }`}>
-                    <p className="font-black text-[10px] opacity-75 mb-1 text-sky-500">📖 愈思写作建议：</p>
+                    <p className="font-black text-[10px] opacity-75 mb-1 text-amber-500">📖 愈思写作建议：</p>
                     <ul className="list-disc pl-3.5 space-y-1">
                       {DIARY_PROMPTS.map((prompt, pi) => (
-                        <li key={pi} className="cursor-pointer hover:text-sky-500" onClick={() => setDiaryInput(prev => prev + prompt)}>
+                        <li key={pi} className="cursor-pointer hover:text-amber-500" onClick={() => setDiaryInput(prev => prev + prompt)}>
                           {prompt}
                         </li>
                       ))}
@@ -832,7 +1490,7 @@ export default function PersonalProfile({
                           onClick={() => setDiaryMood(mood)}
                           className={`px-3 py-1 rounded-full text-xs transition-all cursor-pointer font-sans ${
                             diaryMood === mood
-                              ? 'bg-sky-500/15 text-sky-500 border border-sky-500/40 font-bold'
+                              ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 font-bold'
                               : isDark
                                 ? 'bg-slate-900 text-gray-400 border border-transparent'
                                 : 'bg-stone-100 text-stone-500 border border-transparent'
@@ -854,18 +1512,18 @@ export default function PersonalProfile({
                       rows={5}
                       className={`w-full p-3 rounded-xl border text-xs focus:outline-none transition-colors leading-relaxed font-sans ${
                         isDark 
-                          ? 'bg-[#040810] border-slate-900 text-white focus:border-sky-500/40' 
-                          : 'bg-white border-stone-250 text-stone-900 focus:border-sky-500/50 shadow-inner'
+                          ? 'bg-[#040810] border-slate-900 text-white focus:border-amber-400/30' 
+                          : 'bg-white border-stone-250 text-stone-900 focus:border-[#a67c52]/40 shadow-inner'
                       }`}
                     />
                   </div>
 
                   {/* 🪄 INTERVENTION AI AUTO-CONTINUING ASSISTANCE DRAWER CARD */}
                   <div className={`p-3 rounded-xl border flex flex-col gap-2 ${
-                    isDark ? 'bg-slate-950/60 border-slate-900' : 'bg-gray-100 shadow-sm border-stone-200'
+                    isDark ? 'bg-slate-950/60 border-slate-900' : 'bg-white shadow-sm border-stone-200'
                   }`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-sky-500">
+                      <div className="flex items-center gap-1.5 text-amber-500">
                         <Sparkles className="w-3.5 h-3.5 animate-pulse" />
                         <span className="text-[10.5px] font-bold">智能 定制代笔协助 (续句扩展)</span>
                       </div>
@@ -877,14 +1535,14 @@ export default function PersonalProfile({
                             ? 'bg-gray-500/10 text-gray-400'
                             : !diaryInput.trim()
                               ? 'bg-gray-500/5 text-gray-400 opacity-50'
-                              : 'bg-sky-500 text-white hover:bg-sky-450'
+                              : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white font-extrabold shadow-sm'
                         }`}
                       >
                         {isContinuing ? <RefreshCw className="w-3 h-3 animate-spin" /> : '试用 润色续笔'}
                       </button>
                     </div>
                     <p className={`text-[9.5px] leading-relaxed opacity-60 ${isDark ? 'text-gray-400' : 'text-stone-600'}`}>
-                      写到一半无法流畅展开？点击上方让专家助理顺着您的情绪和感悟优雅续写诗意修持，句式将直接追加到您的随笔末尾。
+                      写到一半无法流畅展开？点击上方让专家助理顺着您的情绪 and 感悟优雅续写诗意修持，句式将直接追加到您的随笔末尾。
                     </p>
                   </div>
                 </div>
@@ -909,8 +1567,8 @@ export default function PersonalProfile({
                     <button
                       onClick={handleAnalyzeDiary}
                       disabled={isAiProcessing || !diaryInput.trim()}
-                      className={`py-2.5 rounded-xl font-black text-xs select-none cursor-pointer flex items-center justify-center gap-1.5 transition-all bg-gradient-to-r from-sky-600 to-indigo-700 text-white ${
-                        isAiProcessing || !diaryInput.trim() ? 'opacity-40 cursor-not-allowed' : 'hover:from-sky-500 shadow-md'
+                      className={`py-2.5 rounded-xl font-black text-xs select-none cursor-pointer flex items-center justify-center gap-1.5 transition-all bg-gradient-to-r from-[#a67c52] to-amber-700 text-white ${
+                        isAiProcessing || !diaryInput.trim() ? 'opacity-40 cursor-not-allowed' : 'hover:from-[#9c6f44] shadow-md'
                       }`}
                     >
                       {isAiProcessing ? (

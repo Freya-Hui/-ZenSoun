@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Play, Pause, RotateCcw, Heart, Info, CircleHelp, Settings, Check, Lock } from 'lucide-react';
+import { Sparkles, Play, Pause, RotateCcw, Heart, Info, CircleHelp, Settings, Check, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { audioEngine } from '../utils/audioEngine';
 
 interface FloatingText {
@@ -28,15 +28,15 @@ export default function PracticeTools({
     <div className={`flex flex-col h-full transition-colors duration-300 ${isDark ? 'bg-[#0a0f1d] text-gray-200' : 'bg-[#faf9f6] text-stone-800'}`}>
       {/* Visual Subtabs */}
       <div className={`flex p-1.5 rounded-xl mx-4 mt-3 mb-2 border gap-1 ${
-        isDark ? 'bg-[#0f172a] border-slate-800/80' : 'bg-stone-200/50 border-stone-200'
+        isDark ? 'bg-[#0f172a] border-slate-800/80' : 'bg-[#ebdcb9]/20 border-[#ecdcb9]/80'
       }`} id="practice_sub_tabs">
         <button
           onClick={() => setActiveSubTab('muyu')}
           className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300 cursor-pointer ${
             activeSubTab === 'muyu'
               ? isDark
-                ? 'bg-[#1e293b] text-sky-400 shadow-md border-b-[2px] border-sky-400/80'
-                : 'bg-white text-sky-700 shadow border border-stone-300 font-bold'
+                ? 'bg-slate-900 text-amber-400 shadow-md border-b-[2px] border-amber-500'
+                : 'bg-[#a67c52]/10 text-[#a67c52] border border-[#a67c52]/20 shadow-xs font-bold'
               : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-stone-500 hover:text-stone-700'
           }`}
           id="tab_muyu"
@@ -48,8 +48,8 @@ export default function PracticeTools({
           className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300 cursor-pointer ${
             activeSubTab === 'bowl'
               ? isDark
-                ? 'bg-[#1e293b] text-sky-400 shadow-md border-b-[2px] border-sky-400/80'
-                : 'bg-white text-sky-700 shadow border border-stone-300 font-bold'
+                ? 'bg-slate-900 text-amber-400 shadow-md border-b-[2px] border-amber-500'
+                : 'bg-[#a67c52]/10 text-[#a67c52] border border-[#a67c52]/20 shadow-xs font-bold'
               : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-stone-500 hover:text-stone-700'
           }`}
           id="tab_bowl"
@@ -61,8 +61,8 @@ export default function PracticeTools({
           className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-300 cursor-pointer ${
             activeSubTab === 'breath'
               ? isDark
-                ? 'bg-[#1e293b] text-sky-400 shadow-md border-b-[2px] border-sky-400/80'
-                : 'bg-white text-sky-700 shadow border border-stone-300 font-bold'
+                ? 'bg-slate-900 text-amber-400 shadow-md border-b-[2px] border-amber-500'
+                : 'bg-[#a67c52]/10 text-[#a67c52] border border-[#a67c52]/20 shadow-xs font-bold'
               : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-stone-500 hover:text-stone-700'
           }`}
           id="tab_breath"
@@ -222,12 +222,12 @@ function WoodenFishView({
     <div className="flex flex-col items-center justify-center min-h-[460px] pb-4 relative overflow-hidden" id="wooden_fish_container">
       {/* Total Merits Counter */}
       <div className="text-center mb-6 z-10 select-none">
-        <p className="text-xs text-gray-500 tracking-wider font-sans">今日修养累计</p>
+        <p className={`text-xs tracking-wider font-sans ${isDark ? 'text-gray-500' : 'text-stone-500'}`}>今日修养累计</p>
         <motion.p 
           key={totalCount}
           initial={{ scale: 0.82, opacity: 0.8 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-4xl font-mono font-bold text-amber-400 mt-1"
+          className={`text-4xl font-mono font-bold mt-1 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'}`}
         >
           {totalCount}
         </motion.p>
@@ -251,51 +251,70 @@ function WoodenFishView({
         </AnimatePresence>
       </div>
 
-      {/* Interactive Muyu Frame - Premium Dark Wood Micro-glow Tactile Bezel */}
+      {/* Interactive Muyu Frame - Premium SVG line art with high-contrast flat vector response */}
       <div 
         onClick={handleStrike}
-        className="relative w-64 h-64 flex items-center justify-center cursor-pointer bg-gradient-to-tr from-[#120807] via-[#1f0f0c] to-[#2c1814] rounded-[48px] border border-[#3e1b13]/60 backdrop-blur-md shadow-[0_25px_50px_-12px_rgba(0,0,0,0.95),inset_0_2px_6px_rgba(255,255,255,0.04),0_0_25px_rgba(217,119,6,0.08)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.95),inset_0_2px_6px_rgba(255,255,255,0.08),0_0_35px_rgba(217,119,6,0.15)] active:scale-95 transition-all duration-150 z-10"
+        className={`relative w-60 h-60 flex items-center justify-center cursor-pointer rounded-full border transition-all duration-150 active:scale-95 z-10 ${
+          isDark 
+            ? 'bg-gradient-to-tr from-[#020617] to-[#0f172a] border-slate-800 shadow-[0_20px_40px_rgba(0,0,0,0.6)]' 
+            : 'bg-gradient-to-tr from-[#faf8f5] to-[#f4f1ea] border-[#ecdcb9] shadow-md'
+        }`}
         id="muyu_tapper"
       >
-        {/* Outer Golden merit ripple circle */}
+        {/* Outer copper merit ripple circle */}
         {isStriking && (
           <motion.div
             initial={{ scale: 0.85, opacity: 0.8 }}
-            animate={{ scale: 1.45, opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="absolute inset-0 rounded-[48px] border-2 border-amber-500/40 pointer-events-none z-0"
+            animate={{ scale: 1.4, opacity: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className={`absolute inset-0 rounded-full border-2 pointer-events-none z-0 ${
+              isDark ? 'border-amber-500/40' : 'border-[#a67c52]/40'
+            }`}
           />
         )}
 
-        {/* Wooden Fish Visual Graphic representing iOS premium feeling */}
+        {/* Flat Minimalist Wooden Fish SVG Vector Graphic */}
         <motion.div
-          animate={{ scale: isStriking ? 0.90 : 1 }}
-          transition={{ type: 'spring', stiffness: 450, damping: 14 }}
-          className="w-44 h-44 rounded-full bg-gradient-to-br from-[#4c221b] via-[#25100c] to-[#120604] shadow-[inset_0_4px_16px_rgba(255,255,255,0.08),0_15px_35px_rgba(0,0,0,0.9)] border border-[#6f3328]/40 flex items-center justify-center relative origin-center z-10"
+          animate={{ scale: isStriking ? 0.92 : 1 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+          className="relative origin-center z-10 flex items-center justify-center"
         >
-          {/* Ornate Zen Carving lines on standard wood block */}
-          <div className="absolute w-24 h-6 rounded-full border-t-2 border-[#5c2a21]/55 top-10 left-10 transform -rotate-45" />
-          <div className="absolute w-24 h-6 rounded-full border-b-2 border-[#5c2a21]/55 bottom-10 right-10 transform -rotate-45" />
-          
-          <div className="w-16 h-16 bg-gradient-to-r from-[#1c0604] to-[#0a0201] rounded-full shadow-inner flex items-center justify-center border border-[#3e1b12]">
-            {/* Animated Golden Core representing physical hollow sound */}
-            <div className={`w-8 h-8 rounded-full border-2 border-amber-500/25 flex items-center justify-center transition-all ${isStriking ? 'scale-115 bg-amber-500/15' : 'bg-[#eab308]/5'}`}>
-              <div className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
-            </div>
-          </div>
-          
-          {/* Hollow resonance opening gap */}
-          <div className="absolute w-14 h-4 bg-black/95 rounded-full bottom-12 left-1/2 transform -translate-x-1/2 border border-amber-950/40 shadow-inner" />
+          <svg viewBox="0 0 100 100" className={`w-36 h-36 ${
+            isDark 
+              ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(245,158,11,0.25)]' 
+              : 'text-[#5c4033] drop-shadow-[0_4px_10px_rgba(92,64,51,0.15)]'
+          } transition-colors duration-300`} fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Elegant classical outline of wooden fish */}
+            <path d="M50 12C28 12 14 26 14 47C14 52 16 66 24 73C29 77 38 79 50 79C62 79 71 77 76 73C84 66 86 52 86 47C86 26 72 12 50 12Z" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+            
+            {/* Decorative stylized cloud-scale or dynamic central ridge */}
+            <path d="M40 38C43 35 47 35 50 38C53 35 57 35 60 38" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+            <path d="M44 47C46 45 48 45 50 47C52 45 54 45 56 47" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            
+            {/* Hollow resonance opening gap at the bottom */}
+            <path d="M28 64C35 59 65 59 72 64" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
+            <circle cx="28" cy="64" r="3" fill="currentColor" />
+            <circle cx="72" cy="64" r="3" fill="currentColor" />
+            
+            {/* Traditional handle ties / ties loop */}
+            <path d="M45 12C45 6 55 6 55 12" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+            {/* Stylized central eye structure */}
+            <circle cx="50" cy="27" r="4.5" stroke="currentColor" strokeWidth="3.5" />
+          </svg>
         </motion.div>
       </div>
 
-      <p className="text-gray-400 text-xs mt-6 mb-4 font-sans flex items-center gap-1.5 opacity-80 select-none">
+      <p className={`text-xs mt-6 mb-4 font-sans flex items-center gap-1.5 opacity-80 select-none ${isDark ? 'text-gray-400' : 'text-stone-600'}`}>
         指尖轻触或点击木鱼 • 息心解郁
       </p>
 
       {/* Preset theme select layout representing traditional culture style */}
-      <div className="w-full max-w-sm mt-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
-        <p className="text-xs text-amber-500/90 font-medium mb-2.5 flex items-center gap-1 font-sans select-none">
+      <div className={`w-full max-w-sm mt-3 p-4 rounded-xl border ${
+        isDark ? 'bg-[#0f172a]/60 border-slate-800/80' : 'bg-white border-[#ecdcb9] shadow-sm'
+      }`}>
+        <p className={`text-xs font-semibold mb-2.5 flex items-center gap-1 font-sans select-none ${
+          isDark ? 'text-amber-500/90' : 'text-[#a67c52]'
+        }`}>
           <Sparkles className="w-3.5 h-3.5" /> 预设默念主题词库
         </p>
         <div className="flex flex-wrap gap-1.5 mb-4" id="muyu_mantra_list">
@@ -305,8 +324,12 @@ function WoodenFishView({
               onClick={() => handleSelectTheme(themeName)}
               className={`px-3 py-1.5 rounded-lg text-xs font-sans transition-all cursor-pointer ${
                 activeTheme === themeName
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40'
-                  : 'bg-slate-800/40 text-gray-400 border border-transparent hover:bg-slate-800/70'
+                  ? isDark 
+                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40'
+                    : 'bg-[#a67c52]/10 text-[#a67c52] border border-[#a67c52]/30 font-bold'
+                  : isDark 
+                    ? 'bg-slate-800/40 text-gray-400 border border-transparent hover:bg-slate-800'
+                    : 'bg-stone-100/60 text-stone-600 border border-stone-200/40 hover:bg-stone-200/40'
               }`}
             >
               {themeName}
@@ -322,13 +345,13 @@ function WoodenFishView({
         </div>
 
         {/* Custom topic wording customization board */}
-        <div className="pt-3.5 border-t border-slate-800/40">
+        <div className={`pt-3.5 border-t ${isDark ? 'border-slate-800/40' : 'border-[#ecdcb9]/40'}`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-gray-400 flex items-center gap-1 font-sans select-none">
+            <span className={`text-[10px] flex items-center gap-1 font-sans select-none ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>
               <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" /> 定制主题词库
             </span>
             {!isPremiumUser && (
-              <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 select-none">
+              <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/25 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 select-none">
                 <Lock className="w-2.5 h-2.5" /> PRO
               </span>
             )}
@@ -340,12 +363,20 @@ function WoodenFishView({
               value={themeInput}
               disabled={!isPremiumUser && !isGenerating}
               onChange={(e) => setThemeInput(e.target.value)}
-              className="flex-1 text-[11px] px-2.5 py-2 rounded-lg bg-slate-950 border border-slate-800 text-white placeholder-gray-600 focus:outline-none focus:border-amber-500/50"
+              className={`flex-1 text-[11px] px-2.5 py-2 rounded-lg border focus:outline-none transition-all ${
+                isDark 
+                  ? 'bg-slate-950 border-slate-800 text-white placeholder-gray-600 focus:border-amber-500/50' 
+                  : 'bg-stone-50 border-[#ecdcb9] text-stone-850 placeholder-stone-400 focus:border-[#a67c52]'
+              }`}
             />
             <button
               onClick={handleThemeCustom}
               disabled={isGenerating || !themeInput.trim()}
-              className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] cursor-pointer disabled:opacity-40 transition-all font-sans shrink-0"
+              className={`px-3.5 py-2 rounded-lg font-bold text-[11px] cursor-pointer disabled:opacity-40 transition-all font-sans shrink-0 ${
+                isDark 
+                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' 
+                  : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white font-black shadow-sm'
+              }`}
             >
               {isGenerating ? "生成中..." : "生成词库"}
             </button>
@@ -499,7 +530,9 @@ function SingingBowlView({ isDark }: { isDark: boolean }) {
       </div>
 
       {/* Science explanation details */}
-      <div className="w-full max-w-sm mt-8 bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+      <div className={`w-full max-w-sm mt-8 p-4 rounded-xl border ${
+        isDark ? 'bg-[#0f172a]/60 border-slate-800/80 text-gray-400' : 'bg-white border-[#ecdcb9]/50 text-[#5c4033] shadow-sm'
+      }`}>
         <div className="flex items-start gap-2.5">
           <Info className="w-4 h-4 text-sky-400 mt-0.5 shrink-0" />
           <div className="text-xs text-gray-400 leading-relaxed font-sans">
@@ -522,20 +555,80 @@ interface BreathingStep {
   color: string;
 }
 
+interface BreathingMethod {
+  name: string;
+  desc: string;
+  shortLabel: string;
+  steps: BreathingStep[];
+}
+
+const breathingMethods: BreathingMethod[] = [
+  {
+    name: "1:1:1 平衡等比调息法",
+    shortLabel: "等比平衡",
+    desc: "应用古典等比调息温养：吸气4秒、闭气4秒、呼气4秒进行均匀氧气流转。适合全天候情绪起伏、思维杂乱时快速调和机体。",
+    steps: [
+      { text: '吸气... (收缩腹部)', duration: 4, action: 'inhale', color: 'border-amber-400/80 text-amber-500 bg-amber-500/5' },
+      { text: '屏息常静... (锁气丹田)', duration: 4, action: 'hold', color: 'border-[#c0a080]/80 text-[#a68c72] bg-[#a68c72]/5' },
+      { text: '缓慢呼气... (浑身放松)', duration: 4, action: 'exhale', color: 'border-[#8e6b46]/80 text-[#8e6b46] bg-[#8e6b46]/5' }
+    ]
+  },
+  {
+    name: "4:7:8 深度安神助眠法",
+    shortLabel: "舒压助眠",
+    desc: "应用著名4-7-8黄金呼吸比：吸气4秒、闭气7秒、呼气8秒。强制减缓心跳流速、松阻副交感神经，是失眠时刻的睡意催化剂。",
+    steps: [
+      { text: '吸气... (吸纳新能)', duration: 4, action: 'inhale', color: 'border-emerald-400/80 text-emerald-500 bg-emerald-500/5' },
+      { text: '深度闭气... (舒缓心流)', duration: 7, action: 'hold', color: 'border-cyan-400/60 text-cyan-600 bg-cyan-500/5' },
+      { text: '极缓呼气... (倾泻浊物)', duration: 8, action: 'exhale', color: 'border-sky-505/80 text-sky-502 bg-sky-500/5' }
+    ]
+  },
+  {
+    name: "4:2:4 醒神苏能极效法",
+    shortLabel: "提神唤能",
+    desc: "采用短屏浅息醒脑频率：吸气4秒、闭气2秒、呼气4秒。通过紧密、轻盈的聚气调和，给脑部神智充氧，适合午后疲惫枯水时提神。",
+    steps: [
+      { text: '吸气... (聚劲上冲)', duration: 4, action: 'inhale', color: 'border-rose-400/80 text-rose-500 bg-rose-500/5' },
+      { text: '聚气凝神... (专注当下)', duration: 2, action: 'hold', color: 'border-purple-400/60 text-purple-600 bg-purple-500/5' },
+      { text: '徐徐呼气... (抛洒热压)', duration: 4, action: 'exhale', color: 'border-amber-400/80 text-amber-500 bg-amber-500/5' }
+    ]
+  }
+];
+
 function BreathingView({ isDark }: { isDark: boolean }) {
-  const steps: BreathingStep[] = [
-    { text: '吸气... (收小腹)', duration: 4, action: 'inhale', color: 'border-emerald-500/80 text-emerald-400 bg-emerald-500/5' },
-    { text: '屏息常静... (稳住状态)', duration: 4, action: 'hold', color: 'border-sky-500/80 text-sky-400 bg-sky-500/5' },
-    { text: '缓慢呼气... (完全放松)', duration: 4, action: 'exhale', color: 'border-indigo-500/80 text-indigo-400 bg-indigo-500/5' }
-  ];
+  const [activeMethodIdx, setActiveMethodIdx] = useState(0);
+  const currentMethod = breathingMethods[activeMethodIdx];
+  const steps = currentMethod.steps;
 
   const [isRunning, setIsRunning] = useState(false);
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(4);
+  const [timeLeft, setTimeLeft] = useState(steps[0].duration);
   const [completedCycles, setCompletedCycles] = useState(0);
   const timerRef = useRef<any>(null);
 
   const activeStep = steps[currentStepIdx];
+
+  // Reset function when switching breathing method
+  const handleSwitchMethod = (newIdx: number) => {
+    setIsRunning(false);
+    setActiveMethodIdx(newIdx);
+    setCurrentStepIdx(0);
+    setTimeLeft(breathingMethods[newIdx].steps[0].duration);
+    setCompletedCycles(0);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const handlePrev = () => {
+    const prevIdx = (activeMethodIdx - 1 + breathingMethods.length) % breathingMethods.length;
+    handleSwitchMethod(prevIdx);
+  };
+
+  const handleNext = () => {
+    const nextIdx = (activeMethodIdx + 1) % breathingMethods.length;
+    handleSwitchMethod(nextIdx);
+  };
 
   useEffect(() => {
     if (isRunning) {
@@ -543,14 +636,16 @@ function BreathingView({ isDark }: { isDark: boolean }) {
         setTimeLeft(prev => {
           if (prev <= 1) {
             // switch to next step
+            let nextStepIdx = 0;
             setCurrentStepIdx(oldIdx => {
               const nextIdx = (oldIdx + 1) % steps.length;
+              nextStepIdx = nextIdx;
               if (nextIdx === 0) {
                 setCompletedCycles(c => c + 1);
               }
               const nextStep = steps[nextIdx];
               
-              // Play a light ticking guide wave or sound
+              // Play a light audio guide
               if (nextStep.action === 'inhale') {
                 audioEngine.playInstrumentNote('harp', 196.00); // Sol note
               } else if (nextStep.action === 'hold') {
@@ -559,10 +654,9 @@ function BreathingView({ isDark }: { isDark: boolean }) {
                 audioEngine.playInstrumentNote('bowl', 220.00); // La note
               }
 
-              setTimeLeft(nextStep.duration);
               return nextIdx;
             });
-            return 4;
+            return steps[nextStepIdx].duration;
           }
           return prev - 1;
         });
@@ -576,14 +670,14 @@ function BreathingView({ isDark }: { isDark: boolean }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isRunning, currentStepIdx]);
+  }, [isRunning, activeMethodIdx, currentStepIdx]);
 
   const toggleBreath = () => {
     if (!isRunning) {
       audioEngine.playInstrumentNote('harp', 220); // Gong strike
       setIsRunning(true);
       setCurrentStepIdx(0);
-      setTimeLeft(4);
+      setTimeLeft(steps[0].duration);
     } else {
       setIsRunning(false);
     }
@@ -592,98 +686,163 @@ function BreathingView({ isDark }: { isDark: boolean }) {
   const handleReset = () => {
     setIsRunning(false);
     setCurrentStepIdx(0);
-    setTimeLeft(4);
+    setTimeLeft(steps[0].duration);
     setCompletedCycles(0);
   };
 
-  // Compute ring animation details
+  // Compute ring scale animation dynamically based on active step's total duration
   let ringScale = 1.0;
   if (isRunning) {
+    const totalDuration = activeStep.duration;
+    const progress = (totalDuration - timeLeft) / totalDuration; // from 0.0 to 1.0
     if (activeStep.action === 'inhale') {
-      // Scale from 1.0 up to 1.7
-      ringScale = 1.0 + ((4 - timeLeft) / 4) * 0.7;
+      ringScale = 1.0 + progress * 0.7; // 1.0 to 1.7
     } else if (activeStep.action === 'hold') {
       ringScale = 1.7;
     } else if (activeStep.action === 'exhale') {
-      // Scale from 1.7 down to 1.0
-      ringScale = 1.7 - ((4 - timeLeft) / 4) * 0.7;
+      ringScale = 1.7 - progress * 0.7; // 1.7 to 1.0
     }
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[460px] pb-4">
+    <div className="flex flex-col items-center justify-center min-h-[480px] pb-4">
       {/* Tracker completed */}
-      <div className="text-center mb-6">
-        <p className="text-xs text-gray-500 tracking-wider">今日专注呼吸</p>
-        <p className="text-lg font-sans font-bold text-emerald-400 mt-1">
-          已呼吸 {completedCycles} 轮周期
+      <div className="text-center mb-5 font-sans">
+        <p className={`text-[10px] tracking-widest font-extrabold uppercase ${isDark ? 'text-amber-500' : 'text-[#a67c52]'}`}>
+          {currentMethod.name}
+        </p>
+        <p className={`text-[15px] font-sans font-black mt-1 ${isDark ? 'text-white' : 'text-stone-800'}`}>
+          已呼吸 <span className="text-amber-500 font-black text-lg">{completedCycles}</span> 轮周期
         </p>
       </div>
 
-      {/* Massive Glowing Breathing Circle */}
-      <div className="w-64 h-64 flex items-center justify-center relative bg-slate-900/30 rounded-full border border-slate-800/40">
-        {/* Animated fluid circle representing lungs */}
-        <motion.div
-          animate={{ scale: ringScale }}
-          transition={{ ease: 'easeInOut', duration: 1.0 }}
-          className={`absolute w-32 h-32 rounded-full border-[3px] shadow-[0_0_30px_rgba(16,185,129,0.15)] flex items-center justify-center ${
-            isRunning ? activeStep.color : 'border-gray-600 bg-slate-800/10'
+      {/* Slide / Swipe Frame with flanked triggers */}
+      <div className="w-full max-w-sm flex items-center justify-between gap-2 px-1">
+        {/* Previous Slider trigger */}
+        <button
+          onClick={handlePrev}
+          className={`p-2 rounded-full cursor-pointer transition-colors active:scale-95 ${
+            isDark ? 'bg-slate-900 border border-slate-800 text-gray-500 hover:text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200 hover:text-stone-700'
           }`}
-        />
+          title="上一个调息法"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
 
-        {/* Counter display in absolute center */}
-        <div className="relative flex flex-col items-center z-10 select-none">
-          {isRunning ? (
-            <>
-              <p className="text-xs text-gray-500 tracking-wider font-sans">当前状态</p>
-              <p className="text-lg font-medium text-white/95 mt-1 text-center font-sans h-8 px-2 max-w-[130px]">
-                {activeStep.text.split(' ')[0]}
-              </p>
-              <div className="text-4xl font-bold font-mono mt-2 text-sky-400">
-                {timeLeft}s
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold tracking-wide text-gray-300 font-sans">准备就绪</p>
-              <p className="text-[10px] text-gray-500 mt-1 text-center font-sans tracking-wide">
-                1:1:1 平衡调息法
-              </p>
-            </>
-          )}
+        {/* Massive Glowing Breathing Circle */}
+        <div className={`w-52 h-52 flex items-center justify-center relative rounded-full border transition-all ${
+          isDark ? 'bg-slate-900/30 border-slate-800/40' : 'bg-stone-100/40 border-[#ecdcb9]/50 shadow-inner'
+        }`}>
+          {/* Animated fluid circle representing lungs */}
+          <motion.div
+            animate={{ scale: ringScale }}
+            transition={{ ease: 'easeInOut', duration: 1.0 }}
+            className={`absolute w-28 h-28 rounded-full border-[3px] shadow-[0_0_30px_rgba(16,185,129,0.15)] flex items-center justify-center ${
+              isRunning ? activeStep.color : 'border-gray-650 bg-slate-800/10 border-dashed border-gray-400/40'
+            }`}
+          />
+
+          {/* Counter display in absolute center */}
+          <div className="relative flex flex-col items-center z-10 select-none font-sans">
+            {isRunning ? (
+              <>
+                <p className="text-[10px] text-gray-400 tracking-wider">进行中</p>
+                <p className={`text-sm font-black mt-1 text-center h-6 px-1 max-w-[120px] ${isDark ? 'text-white' : 'text-stone-800'}`}>
+                  {activeStep.text.split(' ')[0]}
+                </p>
+                <div className={`text-3xl font-black font-mono mt-1 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'}`}>
+                  {timeLeft}秒
+                </div>
+              </>
+            ) : (
+              <>
+                <p className={`text-xs font-black tracking-wide ${isDark ? 'text-amber-500' : 'text-[#a67c52]'}`}>
+                  已对齐
+                </p>
+                <p className="text-[10px] text-gray-400 mt-1 text-center tracking-wide font-black">
+                  {currentMethod.shortLabel}
+                </p>
+                <p className="text-[9px] text-gray-500 mt-0.5 font-bold">
+                  点击下方开始
+                </p>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Next Slider trigger */}
+        <button
+          onClick={handleNext}
+          className={`p-2 rounded-full cursor-pointer transition-colors active:scale-95 ${
+            isDark ? 'bg-slate-900 border border-slate-800 text-gray-500 hover:text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200 hover:text-stone-700'
+          }`}
+          title="下一个调息法"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* SWIPE / DOT INDICATORS (…): 代表切换调息选项 */}
+      <div className="flex items-center justify-center gap-2 mt-5 mb-2" id="breathing_dots_container">
+        {breathingMethods.map((m, i) => {
+          const isActive = i === activeMethodIdx;
+          return (
+            <button
+              key={i}
+              onClick={() => handleSwitchMethod(i)}
+              className={`h-2.5 rounded-full cursor-pointer transition-all duration-300 ${
+                isActive 
+                  ? isDark 
+                    ? 'w-6 bg-amber-500' 
+                    : 'w-6 bg-[#a67c52]'
+                  : isDark 
+                    ? 'w-2.5 bg-slate-800 hover:bg-slate-700' 
+                    : 'w-2.5 bg-stone-300 hover:bg-stone-400'
+              }`}
+              title={m.name}
+            />
+          );
+        })}
       </div>
 
       {/* Control Buttons */}
-      <div className="mt-8 flex items-center gap-4">
+      <div className="mt-4 flex items-center gap-3">
         <button
           onClick={toggleBreath}
-          className={`px-8 py-3 rounded-full font-medium text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer ${
+          className={`px-8 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer ${
             isRunning
-              ? 'bg-amber-600/20 text-amber-400 border border-amber-500/50 hover:bg-amber-600/30'
-              : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              ? 'bg-amber-600/10 text-amber-500 border border-amber-500/40 hover:bg-amber-600/20 shadow-none'
+              : isDark 
+                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' 
+                : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow'
           }`}
         >
-          {isRunning ? <><Pause className="w-4 h-4" /> 暂停调息</> : <><Play className="w-4 h-4" /> 开始引导</>}
+          {isRunning ? <><Pause className="w-4 h-4" /> 暂停调息</> : <><Play className="w-4 h-4 text-currentColor" /> 开始引导</>}
         </button>
 
         {completedCycles > 0 || isRunning ? (
           <button
             onClick={handleReset}
-            className="p-3 rounded-full bg-slate-800 text-gray-400 hover:text-white hover:bg-slate-700 transition-all cursor-pointer border border-slate-700"
+            className={`p-2.5 rounded-full transition-all cursor-pointer border ${
+              isDark 
+                ? 'bg-slate-805 text-gray-400 hover:text-white border-slate-805 hover:bg-slate-700' 
+                : 'bg-white text-stone-500 hover:text-stone-800 border-[#ecdcb9]/60 hover:bg-stone-50 shadow-sm'
+            }`}
           >
             <RotateCcw className="w-4 h-4" />
           </button>
         ) : null}
       </div>
 
-      {/* Guidance box */}
-      <div className="w-full max-w-sm mt-8 bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
-        <p className="text-xs text-emerald-500/90 font-medium mb-1.5 flex items-center gap-1 font-sans">
-          等比调息法则
+      {/* Guidance Dynamic box */}
+      <div className={`w-full max-w-sm mt-6 p-4 rounded-xl border font-sans ${
+        isDark ? 'bg-[#0f172a]/60 border-slate-800/80 text-gray-400' : 'bg-white border-[#ecdcb9] text-[#5c4033] shadow-sm'
+      }`}>
+        <p className={`text-xs font-black mb-1.5 flex items-center gap-1 ${isDark ? 'text-amber-500' : 'text-[#a67c52]'}`}>
+          {currentMethod.name} · 等比舒养指南
         </p>
-        <p className="text-[11px] text-gray-400 leading-relaxed font-sans">
-          应用古老经典的等比调息法：<span className="text-emerald-400 font-medium">吸气4秒</span>（收腹吸纳能量）、<span className="text-sky-400 font-medium">闭气4秒</span>（将氧分锁入丹田细胞）、<span className="text-indigo-400 font-medium">呼气4秒</span>（排出负面浊气和深层压力）。长期吐纳有助于迅速激活副交感神经，极速缓释焦躁。
+        <p className="text-[11px] leading-relaxed text-justify">
+          {currentMethod.desc} 长期坚持每天在静室或无人惊扰处开展本套呼吸吞吐训练，可有效平衡呼吸节奏，降低气能消耗，调节神魂常泰。
         </p>
       </div>
     </div>

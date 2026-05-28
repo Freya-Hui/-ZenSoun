@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Radio, Music, Wand2, Compass, Award, User, Sparkles, Moon, Sun, ShieldAlert, BadgeInfo, Check, Heart, HelpCircle, X, Wallet, SkipBack, SkipForward, Play, Pause, Lock, ShieldCheck, CornerDownLeft, Send, ListCollapse, Inbox, Shuffle, Repeat, BookOpen, ChevronDown, HeartHandshake } from 'lucide-react';
-import MeditationPlayer from './components/MeditationPlayer';
+import { Radio, Music, ListMusic, Wand2, Compass, Award, User, Sparkles, Moon, Sun, ShieldAlert, BadgeInfo, Check, Heart, HelpCircle, X, Wallet, SkipBack, SkipForward, Play, Pause, Lock, ShieldCheck, CornerDownLeft, Send, ListCollapse, Inbox, Shuffle, Repeat, BookOpen, ChevronDown, HeartHandshake } from 'lucide-react';
+import MeditationPlayer, { tracksData } from './components/MeditationPlayer';
 import CustomSynthesizer from './components/CustomSynthesizer';
 import PracticeTools from './components/PracticeTools';
 import CommunityCenter from './components/CommunityCenter';
 import PersonalProfile from './components/PersonalProfile';
-import { SoundRecipe, DiaryEntry, Profile, CommunityPost } from './types';
+import { SoundRecipe, DiaryEntry, Profile, CommunityPost, UserCreation } from './types';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -39,6 +39,7 @@ export default function App() {
   // Secondary dialogue consultation state and simple player modal state
   const [showConsultationModal, setShowConsultationModal] = useState(false);
   const [showSimplePlayerModal, setShowSimplePlayerModal] = useState(false);
+  const [showFloatingPlaylist, setShowFloatingPlaylist] = useState(false);
   const [isLikedTrack, setIsLikedTrack] = useState<boolean>(false);
   const [consultationHistory, setConsultationHistory] = useState<{ sender: 'user' | 'clinician'; text: string }[]>([
     { sender: 'clinician', text: '行者，此间心乱，感应气和五音自适开药。请问行者体内有何受阻邪气积滞，或是精气神有何不适纠缠？' }
@@ -69,6 +70,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('zensound_user_profile_v2', JSON.stringify(profile));
   }, [profile]);
+
+  useEffect(() => {
+    if (!showSimplePlayerModal) {
+      setShowFloatingPlaylist(false);
+    }
+  }, [showSimplePlayerModal]);
 
   // Track playing status for global mini audio bar
   const [currentPlayingTrack, setCurrentPlayingTrack] = useState<string | null>(null);
@@ -129,6 +136,15 @@ export default function App() {
       }
     ];
   });
+
+  // User custom music compositions (我的创作中心)
+  const [userCreations, setUserCreations] = useState<UserCreation[]>(() => {
+    const raw = localStorage.getItem('healing_user_creations_v3');
+    if (raw) return JSON.parse(raw);
+    return [];
+  });
+
+  const [activeCreationToLoad, setActiveCreationToLoad] = useState<UserCreation | null>(null);
 
   // Healing Diary input log database
   const [diaries, setDiaries] = useState<DiaryEntry[]>(() => {
@@ -244,6 +260,10 @@ export default function App() {
     localStorage.setItem('community_posts_v3', JSON.stringify(posts));
   }, [posts]);
 
+  useEffect(() => {
+    localStorage.setItem('healing_user_creations_v3', JSON.stringify(userCreations));
+  }, [userCreations]);
+
   // Global Notifier Helper
   const triggerNotification = (text: string) => {
     setNotifText(text);
@@ -282,6 +302,41 @@ export default function App() {
   const handleSaveRecipe = (recipe: SoundRecipe) => {
     setSavedRecipes(prev => [recipe, ...prev]);
     triggerNotification(`[配方保存] 配方: ${recipe.name} 已妥善保存至我的收藏库`);
+  };
+
+  const handleDeleteRecipe = (recipeId: string) => {
+    setSavedRecipes(prev => prev.filter(r => r.id !== recipeId));
+    triggerNotification(`[配方移除] 配方已从我的配方库中移除`);
+  };
+
+  const handleSaveUserCreation = (
+    name: string,
+    barsData: boolean[][][],
+    instrument: 'harp' | 'bell' | 'bowl' | 'piano',
+    bpm: number
+  ) => {
+    const labelMap = { bowl: '磬钵禅鸣', harp: '至灵竖琴', bell: '空灵编钟', piano: '和韵钢琴' };
+    const noteCount = barsData.flat(2).filter(Boolean).length;
+    
+    const newCreation: UserCreation = {
+      id: `creation_${Date.now()}`,
+      name: name,
+      date: new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }) + ' ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      instrument: instrument,
+      instrumentLabel: labelMap[instrument],
+      barCount: barsData.length,
+      totalNotes: noteCount,
+      bpm: bpm,
+      barsData: barsData
+    };
+    
+    setUserCreations(prev => [newCreation, ...prev]);
+    triggerNotification(`[音轨入库] 乐曲《${name}》已载入「我的创作中心」！`);
+  };
+
+  const handleDeleteUserCreation = (id: string) => {
+    setUserCreations(prev => prev.filter(c => c.id !== id));
+    triggerNotification(`[音轨删除] 该创作曲谱已从我的创作中心移除`);
   };
 
   const handleShareRecipeToCommunity = (recipe: SoundRecipe) => {
@@ -382,7 +437,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen flex flex-col justify-center items-center py-4 md:py-8 font-sans antialiased overflow-x-hidden relative transition-colors duration-300 ${
-      theme === 'night' ? 'bg-[#060a13] text-gray-200 selection:bg-sky-500/25' : 'bg-[#e5e1d8] text-stone-850 selection:bg-sky-500/15'
+      theme === 'night' ? 'bg-[#060a13] text-gray-200 selection:bg-sky-500/25' : 'bg-[#f4ebd9] text-[#4e3629] selection:bg-[#a67c52]/20'
     }`}>
       {/* Dynamic ambient star cloud background */}
       {theme === 'night' ? (
@@ -476,7 +531,7 @@ export default function App() {
         <div className={`w-full h-[620px] rounded-[36px] overflow-hidden flex flex-col justify-between shrink-0 relative transition-all duration-300 ${
           theme === 'night'
             ? 'bg-[#090e1a] border-4 border-[#121c33] shadow-[0_25px_60px_rgba(0,0,0,0.85)]'
-            : 'bg-[#faf9f6] border-4 border-stone-350 shadow-[0_20px_50px_rgba(120,100,80,0.15)] text-stone-850'
+            : 'bg-[#fdfaf3] border-4 border-[#dacdb9] shadow-[0_20px_50px_rgba(100,70,40,0.1)] text-[#4e3629]'
         }`} id="phone_wrapper_frame">
           
           {!isLoggedIn ? (
@@ -781,6 +836,11 @@ export default function App() {
                     onOpenSubscribeModal={() => setShowSubscribeModal(true)}
                     onSaveRecipe={handleSaveRecipe}
                     onShareRecipeToCommunity={handleShareRecipeToCommunity}
+                    onSaveCreation={handleSaveUserCreation}
+                    activeCreationToLoad={activeCreationToLoad}
+                    onClearActiveCreationToLoad={() => setActiveCreationToLoad(null)}
+                    userCreations={userCreations}
+                    theme={theme}
                   />
                 )}
 
@@ -820,12 +880,21 @@ export default function App() {
                       setProfile(p => ({ ...p, ...updated }));
                     }}
                     onLogOut={handleLogOut}
+                    savedRecipes={savedRecipes}
+                    onDeleteRecipe={handleDeleteRecipe}
+                    userCreations={userCreations}
+                    onDeleteCreation={handleDeleteUserCreation}
+                    onLoadCreation={(creation) => {
+                      setActiveCreationToLoad(creation);
+                      setActiveTab('synth');
+                      triggerNotification(`[琴谱载入] 正在重新载入您的自主创作《${creation.name}》琴章并开启矩阵面板...`);
+                    }}
                   />
                 )}
               </div>
 
               {/* PERSISTENT FLOATING PLAYER ISLAND */}
-              {playbackState && (
+              {playbackState && activeTab !== 'synth' && (
                 <div className={`mx-3 mb-2 px-3 py-2 rounded-xl border flex items-center justify-between select-none shadow-lg z-40 relative backdrop-blur-md transition-all duration-300 ${
                   theme === 'night'
                     ? 'bg-slate-900/95 border-slate-800 text-gray-200'
@@ -853,7 +922,7 @@ export default function App() {
                         {playbackState.purpose === 'focus' && '专注心流'}
                         {playbackState.purpose === 'rest' && '空灵静心'}
                         {playbackState.purpose === 'energy' && '活力苏醒'}
-                        {playbackState.purpose === 'wuyin' && '古法五音'}
+                        {playbackState.purpose === 'wuyin' && '古法疗愈'}
                       </p>
                       <p className="text-[11px] font-extrabold truncate text-sky-500 font-sans mt-0.5">
                         {playbackState.trackTitle.split(' • ')[1] || playbackState.trackTitle}
@@ -914,17 +983,17 @@ export default function App() {
               <div className={`h-16 flex items-center justify-around px-2 relative z-30 shrink-0 select-none transition-colors duration-300 ${
                 theme === 'night' 
                   ? 'bg-[#0c1326] border-t border-slate-900' 
-                  : 'bg-[#faf9f6] border-t border-stone-250'
+                  : 'bg-[#f4ebd5] border-t border-[#dacdb9]'
               }`} id="phone_bottom_bar">
                 {/* Player Tab */}
                 <button
                   onClick={() => setActiveTab('player')}
                   className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all ${
                     activeTab === 'player' 
-                      ? 'text-sky-500 scale-102 font-bold' 
+                      ? theme === 'night' ? 'text-sky-500 scale-102 font-bold' : 'text-[#a67c52] scale-102 font-black' 
                       : theme === 'night' 
                         ? 'text-gray-500 hover:text-gray-400' 
-                        : 'text-stone-450 hover:text-stone-700'
+                        : 'text-[#826e5e] hover:text-[#4e3629]'
                   }`}
                 >
                   <Music className="w-5 h-5" />
@@ -936,10 +1005,10 @@ export default function App() {
                   onClick={() => setActiveTab('synth')}
                   className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all ${
                     activeTab === 'synth' 
-                      ? 'text-sky-500 scale-102 font-bold' 
+                      ? theme === 'night' ? 'text-sky-500 scale-102 font-bold' : 'text-[#a67c52] scale-102 font-black' 
                       : theme === 'night' 
                         ? 'text-gray-500 hover:text-gray-400' 
-                        : 'text-stone-450 hover:text-stone-700'
+                        : 'text-[#826e5e] hover:text-[#4e3629]'
                   }`}
                 >
                   <Wand2 className="w-5 h-5" />
@@ -951,10 +1020,10 @@ export default function App() {
                   onClick={() => setActiveTab('practice')}
                   className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all ${
                     activeTab === 'practice' 
-                      ? 'text-sky-500 scale-102 font-bold' 
+                      ? theme === 'night' ? 'text-sky-500 scale-102 font-bold' : 'text-[#a67c52] scale-102 font-black' 
                       : theme === 'night' 
                         ? 'text-gray-500 hover:text-gray-400' 
-                        : 'text-stone-450 hover:text-stone-700'
+                        : 'text-[#826e5e] hover:text-[#4e3629]'
                   }`}
                 >
                   <Radio className="w-5 h-5" />
@@ -966,10 +1035,10 @@ export default function App() {
                   onClick={() => setActiveTab('community')}
                   className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all ${
                     activeTab === 'community' 
-                      ? 'text-sky-500 scale-102 font-bold' 
+                      ? theme === 'night' ? 'text-sky-500 scale-102 font-bold' : 'text-[#a67c52] scale-102 font-black' 
                       : theme === 'night' 
                         ? 'text-gray-500 hover:text-gray-400' 
-                        : 'text-stone-450 hover:text-stone-700'
+                        : 'text-[#826e5e] hover:text-[#4e3629]'
                   }`}
                 >
                   <Compass className="w-5 h-5" />
@@ -981,10 +1050,10 @@ export default function App() {
                   onClick={() => setActiveTab('profile')}
                   className={`flex flex-col items-center justify-center p-1 cursor-pointer transition-all ${
                     activeTab === 'profile' 
-                      ? 'text-sky-500 scale-102 font-bold' 
+                      ? theme === 'night' ? 'text-sky-500 scale-102 font-bold' : 'text-[#a67c52] scale-102 font-black' 
                       : theme === 'night' 
                         ? 'text-gray-500 hover:text-gray-400' 
-                        : 'text-stone-450 hover:text-stone-700'
+                        : 'text-[#826e5e] hover:text-[#4e3629]'
                   }`}
                 >
                   <User className="w-5 h-5" />
@@ -1324,7 +1393,7 @@ export default function App() {
                     <span className="text-gray-500 font-medium">共 15 首</span>
                   </p>
                   
-                  <div className="divide-y divide-slate-900 text-xs text-stone-250 space-y-1 max-h-[220px] overflow-y-auto pr-1">
+                  <div className="divide-y divide-slate-900 text-xs text-stone-250 space-y-1 max-h-[150px] overflow-y-auto pr-1">
                     {[
                       { pid: 'sleep_1', name: '极速入梦 • 舒缓摇篮潮汐', cat: 'sleep', lv: 1, premium: false },
                       { pid: 'sleep_2', name: '深沉归宿 • 星海深潜磁场', cat: 'sleep', lv: 2, premium: false },
@@ -1358,7 +1427,7 @@ export default function App() {
                             }));
                             triggerNotification(`[排播转换] 已为您顺畅载入音轨: ${tr.name}`);
                           }}
-                          className="flex justify-between items-center p-2 rounded-lg cursor-pointer hover:bg-slate-900 transition-all text-[11px]"
+                          className="flex justify-between items-center p-2 rounded-lg cursor-pointer hover:bg-slate-9050/60 transition-all text-[11px]"
                         >
                           <div className="flex-1 truncate pr-2 text-left font-sans font-medium text-gray-300 hover:text-white">
                             {tr.name}
@@ -1384,17 +1453,15 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* --- SIMPLE PLAYER MODAL (QQ 音乐风极简播放界面) --- */}
       <AnimatePresence>
         {showSimplePlayerModal && playbackState && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[900] flex items-center justify-center p-3 select-none">
-            <motion.div 
-              initial={{ y: "100%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 0 }}
-              transition={{ type: "spring", damping: 26, stiffness: 200 }}
-              className="w-full max-w-md h-[95vh] rounded-[28px] overflow-hidden flex flex-col shadow-2xl relative border border-slate-900 bg-[#070b13] text-gray-200"
+            <div 
+              className={`w-full max-w-md h-[95vh] rounded-[28px] overflow-hidden flex flex-col shadow-2xl relative border transition-all duration-300 ${
+                theme === 'night' 
+                  ? 'border-slate-900 bg-[#070b13] text-gray-200' 
+                  : 'border-[#dacdb9]/80 bg-[#fdfaf3] text-[#4e3629]'
+              }`}
               id="qq_style_simple_player"
             >
               {/* Dynamic Blurred Glow Base */}
@@ -1406,19 +1473,35 @@ export default function App() {
               }`} />
 
               {/* Dynamic Watermark Background Grids */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,#030712_20%,transparent_100%)] opacity-70 pointer-events-none -z-10" />
+              <div className={`absolute inset-0 pointer-events-none -z-10 transition-opacity duration-300 ${
+                theme === 'night' 
+                  ? 'bg-[radial-gradient(circle_at_bottom_left,#030712_20%,transparent_100%)] opacity-70' 
+                  : 'bg-[radial-gradient(circle_at_bottom_left,#f4ebd5_30%,transparent_100%)] opacity-85'
+              }`} />
 
               {/* Top Action Header */}
-              <div className="p-4 flex items-center justify-between shrink-0 border-b border-slate-950 bg-[#05080f]/74 backdrop-blur">
+              <div className={`p-4 flex items-center justify-between shrink-0 border-b transition-colors ${
+                theme === 'night' 
+                  ? 'border-slate-950 bg-[#05080f]/74' 
+                  : 'border-[#dacdb9]/45 bg-[#fbf5e7]/85'
+              } backdrop-blur`}>
                 <button 
                   onClick={() => setShowSimplePlayerModal(false)}
-                  className="p-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-gray-400 hover:text-white cursor-pointer transition-all active:scale-95"
+                  className={`p-1.5 rounded-full cursor-pointer transition-all active:scale-95 ${
+                    theme === 'night' 
+                      ? 'bg-slate-900 hover:bg-slate-800 text-gray-400 hover:text-white' 
+                      : 'bg-[#ebdcb9] hover:bg-[#ebdfc8]/80 text-[#5c4033] hover:text-[#2d1e18]'
+                  }`}
                 >
                   <ChevronDown className="w-5 h-5" />
                 </button>
                 <div className="text-center">
-                  <span className="text-[10px] font-black tracking-widest text-sky-450 uppercase block mb-0.5">神弦妙音 • 专效修持</span>
-                  <span className="text-[11px] font-bold text-gray-300">
+                  <span className={`text-[10px] font-black tracking-widest uppercase block mb-0.5 ${
+                    theme === 'night' ? 'text-sky-450' : 'text-[#a67c52]'
+                  }`}>
+                    神弦妙音 • 专效修持
+                  </span>
+                  <span className={`text-[11px] font-black ${theme === 'night' ? 'text-gray-300' : 'text-[#4e3629]'}`}>
                     {playbackState.purpose === 'sleep' && '加深睡眠中'}
                     {playbackState.purpose === 'focus' && '专注心流中'}
                     {playbackState.purpose === 'rest' && '灵台空明中'}
@@ -1426,20 +1509,11 @@ export default function App() {
                     {playbackState.purpose === 'wuyin' && '五脏谐振中'}
                   </span>
                 </div>
-                <button 
-                  onClick={() => {
-                    setShowSimplePlayerModal(false);
-                    setShowConsultationModal(true);
-                  }}
-                  className="p-2 rounded-xl bg-gradient-to-r from-sky-500/10 to-indigo-500/10 border border-sky-500/20 text-sky-400 hover:text-white cursor-pointer transition-all active:scale-95 flex items-center gap-1 text-[10px] font-bold"
-                >
-                  <HeartHandshake className="w-3.5 h-3.5" />
-                  <span>问诊</span>
-                </button>
+                <div className="w-10 h-10" />
               </div>
 
               {/* Core interactive Body */}
-              <div className="flex-1 flex flex-col justify-around p-6 overflow-y-auto">
+              <div className="flex-1 flex flex-col justify-around p-6 overflow-y-auto relative">
                 
                 {/* Turntable Section */}
                 <div className="relative flex flex-col items-center justify-center my-4">
@@ -1451,15 +1525,17 @@ export default function App() {
                     }}
                   >
                     <svg width="45" height="100" viewBox="0 0 45 100" fill="none" className="drop-shadow-lg">
-                      <path d="M5 5h10l8 45h4l2 15h-4l-3-8h-5l1-7h-4L5 5z" fill="#94a3b8" />
-                      <circle cx="10" cy="5" r="4" fill="#64748b" />
+                      <path d="M5 5h10l8 45h4l2 15h-4l-3-8h-5l1-7h-4L5 5z" fill={theme === 'night' ? '#94a3b8' : '#8e6b46'} />
+                      <circle cx="10" cy="5" r="4" fill={theme === 'night' ? '#64748b' : '#5c4033'} />
                       <circle cx="10" cy="5" r="2" fill="#fff" />
                       <circle cx="21" cy="58" r="2.5" fill="#ef4444" />
                     </svg>
                   </div>
 
                   {/* Outer record ring */}
-                  <div className="w-60 h-60 rounded-full bg-slate-950 flex items-center justify-center border-4 border-slate-900 shadow-[0_20px_50px_rgba(0,0,0,0.75)] relative p-1.5 overflow-hidden">
+                  <div className={`w-60 h-60 rounded-full flex items-center justify-center border-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative p-1.5 overflow-hidden ${
+                    theme === 'night' ? 'bg-slate-950 border-slate-900' : 'bg-[#1b120c] border-[#8e6b46]/50'
+                  }`}>
                     <div className={`w-full h-full rounded-full border border-gray-100/10 flex items-center justify-center relative ${
                       playbackState.isPlaying ? 'animate-spin' : ''
                     }`} style={{ animationDuration: '24s', animationTimingFunction: 'linear' }}>
@@ -1473,12 +1549,14 @@ export default function App() {
                       <div className="absolute inset-18 border border-zinc-800/30 rounded-full" />
 
                       {/* Record Label sticker with gloss effect */}
-                      <div className={`w-24 h-24 rounded-full bg-gradient-to-tr from-slate-900 via-sky-950 to-slate-900 flex items-center justify-center border-2 border-slate-950 overflow-hidden relative shadow-inner`}>
-                        {playbackState.purpose === 'sleep' && <Moon className="w-10 h-10 text-sky-400 drop-shadow-md" />}
-                        {playbackState.purpose === 'focus' && <ShieldCheck className="w-10 h-10 text-emerald-400 drop-shadow-md" />}
-                        {playbackState.purpose === 'rest' && <Heart className="w-10 h-10 text-rose-400 drop-shadow-md" />}
-                        {playbackState.purpose === 'energy' && <Sparkles className="w-10 h-10 text-amber-500 drop-shadow-md" />}
-                        {playbackState.purpose === 'wuyin' && <Music className="w-10 h-10 text-purple-400 drop-shadow-md" />}
+                      <div className={`w-24 h-24 rounded-full bg-gradient-to-tr flex items-center justify-center border-2 border-slate-950 overflow-hidden relative shadow-inner ${
+                        theme === 'night' ? 'from-slate-900 via-sky-950 to-slate-900' : 'from-[#a67c52] via-[#8f663c] to-[#a67c52]'
+                      }`}>
+                        {playbackState.purpose === 'sleep' && <Moon className="w-10 h-10 text-sky-300 drop-shadow-md" />}
+                        {playbackState.purpose === 'focus' && <ShieldCheck className="w-10 h-10 text-emerald-300 drop-shadow-md" />}
+                        {playbackState.purpose === 'rest' && <Heart className="w-10 h-10 text-rose-300 drop-shadow-md" />}
+                        {playbackState.purpose === 'energy' && <Sparkles className="w-10 h-10 text-amber-300 drop-shadow-md" />}
+                        {playbackState.purpose === 'wuyin' && <Music className="w-10 h-10 text-purple-300 drop-shadow-md" />}
 
                         {/* Gloss overlay */}
                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent rotate-45 pointer-events-none" />
@@ -1488,11 +1566,15 @@ export default function App() {
                 </div>
 
                 {/* Track titles text details */}
-                <div className="text-center space-y-1.5 mt-2">
-                  <h2 className="text-base font-extrabold text-white tracking-wide font-sans leading-tight">
+                <div className="text-center space-y-1 mt-2">
+                  <h2 className={`text-base font-extrabold tracking-wide font-sans leading-tight ${
+                    theme === 'night' ? 'text-white' : 'text-[#4e3629]'
+                  }`}>
                     {playbackState.trackTitle.split(' • ')[1] || playbackState.trackTitle}
                   </h2>
-                  <p className="text-[10.5px] text-gray-400 font-sans tracking-widest opacity-85">
+                  <p className={`text-[10.5px] font-sans tracking-widest opacity-85 ${
+                    theme === 'night' ? 'text-gray-400' : 'text-[#826e5e]'
+                  }`}>
                     {playbackState.purpose === 'sleep' && '深沉助眠磁场 • 慢波谐振 睡眠药方'}
                     {playbackState.purpose === 'focus' && '专注记忆提升 • 脑重塑 坚实心流'}
                     {playbackState.purpose === 'rest' && '负能排空释放 • 情怀息气 行随自调'}
@@ -1500,8 +1582,12 @@ export default function App() {
                     {playbackState.purpose === 'wuyin' && '古法声频谐振 • 脾胃调和 舒心理肺'}
                   </p>
                   
-                  <div className="pt-2 flex justify-center">
-                    <span className="px-2.5 py-0.5 rounded-full text-[8.5px] font-bold bg-[#0d1527] text-sky-450 border border-sky-500/25 font-sans">
+                  <div className="pt-1.5 flex justify-center">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[8.5px] font-bold border font-sans ${
+                      theme === 'night' 
+                        ? 'bg-[#0d1527] text-sky-450 border-sky-500/25' 
+                        : 'bg-[#f4ebd5] text-[#a67c52] border-[#dacdb9]'
+                    }`}>
                       FLAC 24-bit 无损保真级
                     </span>
                   </div>
@@ -1509,29 +1595,37 @@ export default function App() {
 
                 {/* Timeline display slider */}
                 <div className="w-full space-y-2 mt-6">
-                  <div className="flex justify-between text-[9px] text-gray-500 font-mono tracking-wider px-1">
+                  <div className={`flex justify-between text-[9px] font-mono tracking-wider px-1 ${
+                    theme === 'night' ? 'text-gray-500' : 'text-[#826e5e]'
+                  }`}>
                     <span>{Math.floor(playbackState.progress / 60)}:{playbackState.progress % 60 < 10 ? '0' : ''}{playbackState.progress % 60}</span>
                     <span>{Math.floor(playbackState.duration / 60)}:{playbackState.duration % 60 < 10 ? '0' : ''}{playbackState.duration % 60}</span>
                   </div>
                   <div 
-                    className="w-full h-1 bg-slate-900 hover:h-1.5 rounded-full relative cursor-pointer transition-all duration-250"
+                    className={`w-full h-1 rounded-full relative cursor-pointer transition-all duration-250 ${
+                      theme === 'night' ? 'bg-slate-900' : 'bg-[#ebdcb9]'
+                    }`}
                     onClick={() => {
                       triggerNotification('[大音希声] 守护中！播放进度正随愈疗节律循序调推');
                     }}
                   >
                     <div 
-                      className="bg-gradient-to-r from-sky-400 to-indigo-500 h-full rounded-full transition-all duration-300"
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        theme === 'night' ? 'bg-gradient-to-r from-sky-400 to-indigo-500' : 'bg-[#a67c52]'
+                      }`}
                       style={{ width: `${(playbackState.progress / Math.max(1, playbackState.duration)) * 100}%` }}
                     />
                     <div 
-                      className="absolute w-2 h-2 rounded-full bg-white shadow-md border border-sky-500 -mt-0.5"
+                      className={`absolute w-2 h-2 rounded-full shadow-md -mt-0.5 ${
+                        theme === 'night' ? 'bg-white border border-sky-500' : 'bg-white border border-[#a67c52]'
+                      }`}
                       style={{ left: `calc(${(playbackState.progress / Math.max(1, playbackState.duration)) * 100}% - 4px)` }}
                     />
                   </div>
                 </div>
 
                 {/* Controls Bar Row */}
-                <div className="flex items-center justify-between mt-6 px-1">
+                <div className="flex items-center justify-between mt-6 px-1 bg-transparent">
                   
                   {/* Mode switcher cycle */}
                   <button 
@@ -1548,15 +1642,17 @@ export default function App() {
                         nextMode === 'loop' ? '顺序循环' : nextMode === 'random' ? '随机播律' : '单曲守护'
                       }`);
                     }}
-                    className="p-2 rounded-full hover:bg-slate-900 text-gray-400 hover:text-white cursor-pointer transition-all active:scale-90"
+                    className={`p-2 rounded-full cursor-pointer transition-all active:scale-90 ${
+                      theme === 'night' ? 'hover:bg-slate-900 text-gray-400 hover:text-white' : 'hover:bg-[#ebdcb9]/40 text-[#5c4033] hover:text-[#2d1e18]'
+                    }`}
                     title="切换播放模式"
                   >
-                    {playbackState.playMode === 'loop' && <Repeat className="w-4 h-4 text-sky-400" />}
-                    {playbackState.playMode === 'random' && <Shuffle className="w-4 h-4 text-emerald-400" />}
+                    {playbackState.playMode === 'loop' && <Repeat className={`w-4 h-4 ${theme === 'night' ? 'text-sky-450' : 'text-[#a67c52]'}`} />}
+                    {playbackState.playMode === 'random' && <Shuffle className={`w-4 h-4 ${theme === 'night' ? 'text-emerald-450' : 'text-emerald-700'}`} />}
                     {playbackState.playMode === 'single' && (
                       <div className="relative">
-                        <Repeat className="w-4 h-4 text-amber-500" />
-                        <span className="absolute -top-1.5 -right-1 text-[6.5px] font-black font-mono text-amber-400 bg-slate-950 px-0.5 rounded">1</span>
+                        <Repeat className="w-4 h-4 text-amber-600" />
+                        <span className="absolute -top-1.5 -right-1 text-[6.5px] font-black font-mono text-amber-600 bg-white dark:bg-slate-950 px-0.5 rounded">1</span>
                       </div>
                     )}
                   </button>
@@ -1567,7 +1663,9 @@ export default function App() {
                       window.dispatchEvent(new CustomEvent('zensound-prev-track'));
                       triggerNotification('[神律变换] 正在为您平缓过渡至上一首音轨');
                     }}
-                    className="p-2.5 rounded-full hover:bg-slate-900 text-gray-300 hover:text-white cursor-pointer transition-all active:scale-95"
+                    className={`p-2.5 rounded-full cursor-pointer transition-all active:scale-95 ${
+                      theme === 'night' ? 'hover:bg-slate-900 text-gray-300 hover:text-white' : 'hover:bg-[#ebdcb9]/40 text-[#5c4033] hover:text-[#2d1e18]'
+                    }`}
                     title="上一曲"
                   >
                     <SkipBack className="w-5 h-5" />
@@ -1578,7 +1676,11 @@ export default function App() {
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('zensound-toggle-play'));
                     }}
-                    className="w-12 h-12 rounded-full bg-gradient-to-r from-sky-500 to-indigo-650 text-white flex items-center justify-center cursor-pointer shadow-lg shadow-sky-500/20 active:scale-90 hover:from-sky-405 transition-all text-center relative"
+                    className={`w-12 h-12 rounded-full text-white flex items-center justify-center cursor-pointer shadow-lg active:scale-90 transition-all text-center relative ${
+                      theme === 'night' 
+                        ? 'bg-gradient-to-r from-sky-500 to-indigo-650 shadow-sky-500/20 hover:from-sky-400' 
+                        : 'bg-[#a67c52] hover:bg-[#8e6b46] shadow-amber-900/10'
+                    }`}
                     title="播放 / 暂停"
                   >
                     {playbackState.isPlaying ? (
@@ -1594,7 +1696,9 @@ export default function App() {
                       window.dispatchEvent(new CustomEvent('zensound-next-track'));
                       triggerNotification('[神律变换] 正在为您平缓过渡至下一首音轨');
                     }}
-                    className="p-2.5 rounded-full hover:bg-slate-900 text-gray-300 hover:text-white cursor-pointer transition-all active:scale-95"
+                    className={`p-2.5 rounded-full cursor-pointer transition-all active:scale-95 ${
+                      theme === 'night' ? 'hover:bg-slate-900 text-gray-300 hover:text-white' : 'hover:bg-[#ebdcb9]/40 text-[#5c4033] hover:text-[#2d1e18]'
+                    }`}
                     title="下一曲"
                   >
                     <SkipForward className="w-5 h-5" />
@@ -1606,23 +1710,130 @@ export default function App() {
                       setIsLikedTrack(!isLikedTrack);
                       triggerNotification(!isLikedTrack ? '[情志反馈] 已加入我心神向收藏金匮' : '[情志反馈] 已移出常驻标记');
                     }}
-                    className="p-2 rounded-full hover:bg-slate-900 cursor-pointer transition-all active:scale-95 animate-none"
+                    className={`p-2 rounded-full cursor-pointer transition-all active:scale-95 ${
+                      theme === 'night' ? 'hover:bg-slate-900' : 'hover:bg-[#ebdcb9]/40'
+                    }`}
                     title="心领赞叹"
                   >
                     <Heart className={`w-4 h-4 transition-colors ${
-                      isLikedTrack ? 'text-rose-500 fill-rose-500' : 'text-gray-400 hover:text-white'
+                      isLikedTrack ? 'text-rose-500 fill-rose-500' : theme === 'night' ? 'text-gray-400 hover:text-white' : 'text-[#5c4033] hover:text-[#2d1e18]'
                     }`} />
                   </button>
 
+                  {/* QQ Music Single List Icon Selector */}
+                  <button 
+                    onClick={() => setShowFloatingPlaylist(!showFloatingPlaylist)}
+                    className={`p-2 rounded-full cursor-pointer transition-all active:scale-95 ${
+                      showFloatingPlaylist 
+                        ? theme === 'night' ? 'bg-sky-500/10 text-sky-400' : 'bg-[#a67c52]/10 text-[#a67c52]'
+                        : theme === 'night' ? 'hover:bg-slate-900 text-gray-450 hover:text-white' : 'hover:bg-[#ebdcb9]/40 text-[#4e3629] hover:text-[#2d1e18]'
+                    }`}
+                    title="播放列表"
+                  >
+                    <ListMusic className="w-4.5 h-4.5" />
+                  </button>
                 </div>
 
                 {/* Professional bottom text warning guard */}
-                <div className="text-center opacity-40 text-[8px] font-sans tracking-wide mt-2">
+                <div className={`text-center opacity-40 text-[8px] font-sans tracking-wide mt-2 ${
+                  theme === 'night' ? 'text-gray-500' : 'text-[#826e5e]'
+                }`}>
                   神弦自适系统依据脑波科学与物理谐振原理设计 • 音量调节在 30%-50% 最宜
                 </div>
 
+                {/* INTERACTIVE PLAYLIST DRAWER COMPONENT WITHIN THE FLOATING PLAYER */}
+                <AnimatePresence>
+                  {showFloatingPlaylist && (
+                    <motion.div
+                      initial={{ y: '100%' }}
+                      animate={{ y: 0 }}
+                      exit={{ y: '100%' }}
+                      transition={{ type: "spring", damping: 25, stiffness: 220 }}
+                      className={`absolute inset-x-0 bottom-0 rounded-t-[24px] border-t p-4 z-[950] font-sans flex flex-col h-[55%] ${
+                        theme === 'night' 
+                          ? 'bg-[#0b101d] border-slate-850 text-gray-100' 
+                          : 'bg-[#faf6ed] border-[#dacdb9] text-[#4e3629]'
+                      }`}
+                    >
+                      {/* Drawer grab line */}
+                      <div className="w-8 h-1 bg-gray-550/20 rounded-full mx-auto mb-3 shrink-0" />
+
+                      <div className="flex justify-between items-center mb-3 shrink-0 select-none">
+                        <div className="flex items-center gap-1.5">
+                          <ListMusic className={`w-4 h-4 ${theme === 'night' ? 'text-sky-400' : 'text-[#a67c52]'}`} />
+                          <span className="text-xs font-black">收纳修持播放列表</span>
+                          <span className="text-[9px] opacity-40">({(tracksData[playbackState.purpose] || []).length}首)</span>
+                        </div>
+                        <button 
+                          onClick={() => setShowFloatingPlaylist(false)}
+                          className="p-1 rounded-full hover:bg-gray-500/10 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Display tracks */}
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 pb-1 scrollbar-none">
+                        {(tracksData[playbackState.purpose] || []).map((tr, trIdx) => {
+                          const isCurrentItem = tr.title === playbackState.trackTitle;
+                          return (
+                            <div
+                              key={tr.id}
+                              onClick={() => {
+                                if (tr.isPremium && !isPremiumUser) {
+                                  setShowSimplePlayerModal(false);
+                                  setShowSubscribeModal(true);
+                                  return;
+                                }
+                                window.dispatchEvent(new CustomEvent('zensound-remote-play', {
+                                  detail: { category: playbackState.purpose, level: trIdx + 1 }
+                                }));
+                                triggerNotification(`[神律变换] 正在为您跳转：${tr.title.split(' • ')[1] || tr.title}`);
+                              }}
+                              className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                                isCurrentItem
+                                  ? theme === 'night' 
+                                    ? 'border-sky-500 bg-sky-950/20 text-sky-450 font-extrabold' 
+                                    : 'border-[#a67c52] bg-[#fdfbf6] text-[#a67c52] font-black'
+                                  : theme === 'night' 
+                                    ? 'border-slate-900 bg-slate-900/35 hover:bg-slate-900/60' 
+                                    : 'border-[#dacdb9]/30 bg-[#f4ebd5]/50 hover:bg-[#ebdcb9]/50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isCurrentItem && playbackState.isPlaying ? (
+                                  <div className="flex gap-0.5 items-end h-3 shrink-0 mb-0.5">
+                                    <span className={`w-0.5 h-2 animate-bounce ${theme === 'night' ? 'bg-sky-500' : 'bg-[#a67c52]'}`} style={{ animationDelay: '0.1s' }} />
+                                    <span className={`w-0.5 h-3 animate-bounce ${theme === 'night' ? 'bg-sky-500' : 'bg-[#a67c52]'}`} style={{ animationDelay: '0.3s' }} />
+                                    <span className={`w-0.5 h-1.5 animate-bounce ${theme === 'night' ? 'bg-sky-500' : 'bg-[#a67c52]'}`} style={{ animationDelay: '0.5s' }} />
+                                  </div>
+                                ) : (
+                                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCurrentItem ? theme === 'night' ? 'bg-sky-500' : 'bg-[#a67c52]' : 'bg-gray-500/35'}`} />
+                                )}
+
+                                <div className="text-left truncate min-w-0">
+                                  <p className="text-xs font-bold truncate leading-normal">{tr.title.split(' • ')[1] || tr.title}</p>
+                                  <p className="text-[9.5px] opacity-45 truncate mt-0.5 leading-normal font-sans font-normal">{tr.desc}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 font-mono text-[9px] text-gray-400 shrink-0">
+                                {tr.isPremium && (
+                                  <span className="text-[7.5px] border border-amber-500/40 text-amber-500 px-1 rounded uppercase font-black shrink-0 scale-90">
+                                    PRO
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
       </AnimatePresence>

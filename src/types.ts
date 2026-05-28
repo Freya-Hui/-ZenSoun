@@ -48,6 +48,18 @@ export interface Profile {
   streak: number; // daily streak
 }
 
+export interface UserCreation {
+  id: string;
+  name: string;
+  date: string;
+  instrument: 'harp' | 'bell' | 'bowl' | 'piano';
+  instrumentLabel: string;
+  barCount: number;
+  totalNotes: number;
+  bpm: number;
+  barsData: boolean[][][];
+}
+
 export interface CommunityPost {
   id: string;
   userName: string;

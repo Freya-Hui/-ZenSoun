@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipForward, SkipBack, ShieldCheck, Star, Sparkles, Volume2, Music, Lock, Heart, VolumeX, Moon, Target, Zap, Search, X, ChevronRight, Bookmark } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, ShieldCheck, Star, Sparkles, Volume2, Music, Lock, Heart, VolumeX, Moon, Target, Zap, Search, X, ChevronRight, Bookmark, Clock, Timer, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AudioVisualizer from './AudioVisualizer';
 import { audioEngine } from '../utils/audioEngine';
@@ -29,7 +29,7 @@ interface PlayerProps {
   theme?: 'day' | 'night';
 }
 
-const tracksData: Record<'sleep' | 'focus' | 'rest' | 'energy' | 'wuyin', Track[]> = {
+export const tracksData: Record<'sleep' | 'focus' | 'rest' | 'energy' | 'wuyin', Track[]> = {
   sleep: [
     { id: 'sleep_1', title: '极速入梦 • 舒缓摇篮潮汐', desc: '轻柔海浪呼吸共鸣，帮助缓和肢体张力势能，引导快速进入睡眠准备。', duration: 420, purpose: 'sleep', isPremium: false, intensityLabel: '温和缓流 (1级)', audioKeyword: 'bowl' },
     { id: 'sleep_2', title: '深沉归宿 • 星海深潜磁场', desc: '虚空安神声疗，解离冗余思绪纠缠，引领深沉无梦长眠。', duration: 600, purpose: 'sleep', isPremium: false, intensityLabel: '沉浸深空 (2级)', audioKeyword: 'bowl' },
@@ -74,11 +74,57 @@ export default function MeditationPlayer({
   const [showFullLibraryModal, setShowFullLibraryModal] = useState(false);
   const [libraryFilterText, setLibraryFilterText] = useState('');
   
+  // Elegant fading symbol overlay state on top of player panel
+  const [fadingSymbol, setFadingSymbol] = useState<{ type: 'play' | 'pause'; id: number } | null>(null);
+  const fadeCountRef = useRef(0);
+  
   // Timer state for Free Users countdown (60s Limit)
   const [freeTimerLeft, setFreeTimerLeft] = useState(60);
   const [showTimedOutModal, setShowTimedOutModal] = useState(false);
   const [playMode, setPlayMode] = useState<'loop' | 'single' | 'random'>('loop');
   const [showPlaylistDrawer, setShowPlaylistDrawer] = useState(false);
+
+  // Auto-shutdown sleep timer states
+  const [sleepTimerSeconds, setSleepTimerSeconds] = useState<number>(0);
+  const sleepTimerRef = useRef<any>(null);
+
+  // Sync Web Audio High Fidelity (lossless EQ effect) on switch
+  useEffect(() => {
+    audioEngine.setHighFidelity(isLossless);
+  }, [isLossless]);
+
+  // Handle auto-shutdown timer
+  useEffect(() => {
+    if (isPlaying && sleepTimerSeconds > 0) {
+      sleepTimerRef.current = setInterval(() => {
+        setSleepTimerSeconds(prev => {
+          if (prev <= 1) {
+            setIsPlaying(false);
+            audioEngine.stopAll();
+            if (sleepTimerRef.current) clearInterval(sleepTimerRef.current);
+            alert("⏰ 定时静修已圆满。愿您身心清澈！");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (sleepTimerRef.current) {
+        clearInterval(sleepTimerRef.current);
+      }
+    }
+    return () => {
+      if (sleepTimerRef.current) {
+        clearInterval(sleepTimerRef.current);
+      }
+    };
+  }, [isPlaying, sleepTimerSeconds]);
+
+  const formatSleepTimer = (totalSecs: number) => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}分${secs < 10 ? '0' : ''}${secs}秒`;
+  };
 
   // Compute active track based on category and level slider
   const categoryTracks = tracksData[selectedCategory];
@@ -269,7 +315,12 @@ export default function MeditationPlayer({
       onOpenSubscribeModal();
       return;
     }
-    setIsPlaying(!isPlaying);
+    const nextIsPlaying = !isPlaying;
+    setIsPlaying(nextIsPlaying);
+    
+    // Set custom fading symbol state
+    fadeCountRef.current += 1;
+    setFadingSymbol({ type: nextIsPlaying ? 'play' : 'pause', id: fadeCountRef.current });
   };
 
   const handleNextTrack = () => {
@@ -350,7 +401,7 @@ export default function MeditationPlayer({
     focus: { label: '心无旁骛', icon: 'Target', desc: '专注曲库：集聚灵敏注意力，屏蔽外界零星杂质干扰' },
     rest: { label: '空灵静心', icon: 'Heart', desc: '静心曲库：重塑绵密呼吸，抽离重荷杂思，恢复身体自在' },
     energy: { label: '活力苏醒', icon: 'Zap', desc: '提神曲库：粉碎午后犯困困倦，拉升正向精力和原动力' },
-    wuyin: { label: '古法五音', icon: 'Music', desc: '五音曲库：传统古法五音共鸣，调和脾肺肝心肾五脏能量' }
+    wuyin: { label: '古法疗愈', icon: 'Music', desc: '古法疗愈曲库：传统古法五音共鸣，调和脾肺肝心肾五脏能量' }
   };
 
   return (
@@ -376,8 +427,8 @@ export default function MeditationPlayer({
               className={`flex flex-col items-center justify-center py-2 px-0.5 rounded-lg cursor-pointer transition-all ${
                 isSelected
                   ? isDark 
-                    ? 'bg-slate-900 border border-slate-800 text-sky-450 font-bold shadow-md' 
-                    : 'bg-white border border-stone-300 text-sky-700 font-bold shadow-sm'
+                    ? 'bg-slate-900 border border-slate-800 text-amber-400 font-bold shadow-md' 
+                    : 'bg-[#a67c52]/10 border border-[#a67c52]/20 text-[#a67c52] font-semibold shadow-xs'
                   : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-stone-500 hover:text-stone-800'
               }`}
             >
@@ -395,44 +446,89 @@ export default function MeditationPlayer({
       </div>
 
       {/* ACTIVE CATEGORY EXPLANATORY MESSAGE */}
-      <div className={`text-center py-1.5 px-3 rounded-lg border text-[10.5px] font-sans transition-colors duration-350 ${
-        isDark ? 'bg-slate-950/40 border-slate-900/60 text-sky-3050/80' : 'bg-stone-50 border-stone-200/50 text-stone-600'
+      <div className={`py-2 px-3.5 rounded-xl border text-[10.5px] font-sans transition-all duration-350 flex flex-col sm:flex-row items-center justify-between gap-2 ${
+        isDark ? 'bg-slate-950/45 border-slate-900/65 text-amber-500/85' : 'bg-[#faf6ed]/70 border-[#ecdcb9]/50 text-stone-600'
       }`}>
-        {categoryLabels[selectedCategory].desc}
+        <span className="text-left leading-relaxed">{categoryLabels[selectedCategory].desc}</span>
+        <button
+          onClick={() => {
+            setLibraryFilterText('');
+            setShowFullLibraryModal(true);
+          }}
+          className={`shrink-0 flex items-center gap-0.5 text-[9.5px] font-extrabold px-2 py-1 rounded-lg border cursor-pointer transition-colors ${
+            isDark 
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20' 
+              : 'bg-[#a67c52]/10 border-[#a67c52]/20 text-[#a67c52] hover:bg-[#a67c52]/15'
+          }`}
+        >
+          发现更多 <ArrowRight className="w-2.5 h-2.5" />
+        </button>
       </div>
 
       {/* 1. VISUALIZER PANEL FRAME */}
-      <div className={`relative w-full h-[175px] rounded-2xl overflow-hidden border transition-all shadow-xl flex flex-col justify-between p-4 flex-none ${
-        isDark 
-          ? 'bg-gradient-to-b from-[#0c1629] to-[#040710] border-slate-900' 
-          : 'bg-gradient-to-b from-stone-100 to-white border-stone-200'
-      }`} id="player_panel">
+      <div 
+        onClick={() => handlePlayPause()}
+        className={`relative w-full h-[175px] rounded-2xl overflow-hidden border transition-all shadow-xl flex flex-col justify-between p-4 flex-none cursor-pointer ${
+          isDark 
+            ? 'bg-gradient-to-b from-[#0c1629] to-[#040710] border-slate-900' 
+            : 'bg-gradient-to-b from-stone-100 to-white border-stone-200'
+        }`} id="player_panel">
         
         {/* Abs background starfield layout */}
-        <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sky-400 via-transparent to-transparent bg-cover" />
+        <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-400 via-transparent to-transparent bg-cover" />
 
         {/* Dynamic canvas visual nodes rendering */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <AudioVisualizer 
             isPlaying={isPlaying} 
-            color={isDark ? "rgba(56, 189, 248, 0.45)" : "rgba(3, 149, 219, 0.4)"} 
+            color={isDark ? "rgba(217, 119, 6, 0.35)" : "rgba(166, 124, 82, 0.3)"} 
             waveCount={3} 
             speedMultiplier={sliderLevel * 0.7} 
           />
         </div>
 
+        {/* Play/Pause Fading Symbol Overlay */}
+        <AnimatePresence>
+          {fadingSymbol && (
+            <motion.div
+              key={fadingSymbol.id}
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: [0, 1, 1, 0], scale: [0.6, 1, 1.15, 1.3] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.7, times: [0, 0.25, 0.65, 1], ease: "easeOut" }}
+              onAnimationComplete={() => {
+                if (fadingSymbol?.id === fadeCountRef.current) {
+                  setFadingSymbol(null);
+                }
+              }}
+              className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none"
+            >
+              <div className="p-4 rounded-full bg-black/40 backdrop-blur-xs border border-white/20 text-white shadow-2xl">
+                {fadingSymbol.type === 'play' ? (
+                  <Play className="w-10 h-10 fill-current text-white translate-x-0.5" />
+                ) : (
+                  <Pause className="w-10 h-10 text-white" />
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Header tags inside frame */}
-        <div className="relative flex justify-between items-center z-10 w-full font-sans">
+        <div className="relative flex justify-between items-center z-10 w-full font-sans" onClick={(e) => e.stopPropagation()}>
           <span className={`px-2.5 py-0.5 rounded-full border text-[9.5px] font-bold uppercase tracking-wider flex items-center gap-1 ${
             isDark 
-              ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' 
-              : 'bg-sky-50 text-sky-700 border-sky-200'
+              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+              : 'bg-[#a67c52]/10 text-[#a67c52] border-[#a67c52]/20'
           }`}>
-            <Sparkles className="w-3 h-3 text-sky-500 animate-spin" /> {categoryLabels[selectedCategory].label} • {activeTrack.intensityLabel}
+            <Sparkles className="w-3 h-3 text-amber-500 animate-spin" /> {categoryLabels[selectedCategory].label} • {activeTrack.intensityLabel}
           </span>
 
           <button
-            onClick={handleLosslessToggle}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLosslessToggle();
+            }}
             className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase font-sans tracking-wide transition-all flex items-center gap-1 cursor-pointer ${
               isLossless
                 ? isDark
@@ -460,7 +556,7 @@ export default function MeditationPlayer({
         </div>
 
         {/* Timelines and progress bar */}
-        <div className="relative z-10 w-full flex flex-col" id="player_timeline">
+        <div className="relative z-10 w-full flex flex-col" id="player_timeline" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-between items-center text-[9px] font-mono text-gray-500 mb-1">
             <span>{formatTime(playProgress)}</span>
             <span>{formatTime(activeTrack.duration)}</span>
@@ -468,7 +564,7 @@ export default function MeditationPlayer({
 
           <div className={`w-full h-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-800/85' : 'bg-stone-200'}`}>
             <div 
-              className="h-full bg-gradient-to-r from-sky-400 to-indigo-500 rounded-full transition-all duration-300" 
+              className="h-full bg-gradient-to-r from-amber-400 to-[#a67c52] rounded-full transition-all duration-300" 
               style={{ width: `${(playProgress / activeTrack.duration) * 100}%` }}
             />
           </div>
@@ -496,7 +592,7 @@ export default function MeditationPlayer({
             <Volume2 className="w-3.5 h-3.5" /> 调节此功效的声音沉浸感 (强度)
           </span>
           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-            isDark ? 'bg-slate-900 text-sky-400' : 'bg-stone-100 text-sky-700'
+            isDark ? 'bg-slate-900 text-amber-400' : 'bg-[#a67c52]/10 text-[#a67c52]'
           }`}>
             {activeTrack?.intensityLabel || '1级'}
           </span>
@@ -524,7 +620,7 @@ export default function MeditationPlayer({
               }
               setSliderLevel(val);
             }}
-            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-sky-500/10 accent-sky-500 hover:accent-sky-400 focus:outline-none"
+            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-amber-500/10 accent-amber-500 hover:accent-amber-400 focus:outline-none"
             id="intensity_slider"
           />
           
@@ -555,7 +651,7 @@ export default function MeditationPlayer({
                     setSliderLevel(lvl);
                   }}
                   className={`cursor-pointer transition-all ${
-                    isSelected ? 'text-sky-500 font-extrabold scale-105' : 'text-gray-400 font-normal hover:text-gray-500'
+                    isSelected ? 'text-amber-500 font-extrabold scale-105' : 'text-gray-400 font-normal hover:text-gray-500'
                   }`}
                 >
                   {label}
@@ -566,238 +662,58 @@ export default function MeditationPlayer({
         </div>
       </div>
 
-      {/* 3. MEDIA CONTROLLER CORE */}
-      <div className="flex items-center justify-center gap-4 py-2 select-none" id="player_controls">
-        {/* Playback Mode Selector (Loop list, single track, random cycle) */}
-        <button
-          onClick={() => {
-            setPlayMode(curr => {
-              if (curr === 'loop') return 'single';
-              if (curr === 'single') return 'random';
-              return 'loop';
-            });
-          }}
-          className={`px-2.5 py-1.5 rounded-lg text-[10px] font-sans font-black tracking-wide border cursor-pointer select-none transition-all mr-1 ${
-            isDark 
-              ? 'bg-slate-900 border-slate-800 text-sky-450 hover:bg-slate-800' 
-              : 'bg-[#faf9f6] border-stone-200 text-sky-700 hover:bg-stone-50 shadow-sm'
-          }`}
-          title="切换播放模式"
-        >
-          {playMode === 'loop' && "列表循环"}
-          {playMode === 'single' && "单曲循环"}
-          {playMode === 'random' && "随机播放"}
-        </button>
-
-        <button
-          onClick={handlePrevTrack}
-          className={`p-3 rounded-full cursor-pointer active:scale-95 transition-transform ${
-            isDark ? 'text-gray-400 hover:text-white' : 'text-stone-500 hover:text-black'
-          }`}
-          title="上一曲"
-        >
-          <SkipBack className="w-5.5 h-5.5" />
-        </button>
- 
-        <button
-          onClick={handlePlayPause}
-          className={`w-14 h-14 bg-gradient-to-tr hover:shadow-sky-500/15 text-white rounded-full flex items-center justify-center shadow-lg cursor-pointer active:scale-95 transition-all ${
-            isDark ? 'from-sky-500 to-indigo-650' : 'from-sky-400 to-teal-500'
-          }`}
-        >
-          {isPlaying ? <Pause className="w-6 h-6 fill-white" /> : <Play className="w-6 h-6 fill-white ml-0.5" />}
-        </button>
- 
-        <button
-          onClick={handleNextTrack}
-          className={`p-3 rounded-full cursor-pointer active:scale-95 transition-transform ${
-            isDark ? 'text-gray-400 hover:text-white' : 'text-stone-500 hover:text-black'
-          }`}
-          title="下一曲"
-        >
-          <SkipForward className="w-5.5 h-5.5" />
-        </button>
-
-        {/* Playlist Toggle */}
-        <button
-          onClick={() => setShowPlaylistDrawer(true)}
-          className={`px-2 py-1.5 rounded-lg text-[10px] font-sans font-black tracking-wide border cursor-pointer select-none transition-all flex items-center gap-1.5 ml-1 ${
-            isDark 
-              ? 'bg-slate-900 border-slate-800 text-sky-450 hover:bg-slate-800' 
-              : 'bg-[#faf9f6] border-stone-200 text-sky-700 hover:bg-stone-50 shadow-sm'
-          }`}
-          title="查看播放列表"
-        >
-          <Bookmark className="w-3 h-3" /> 播放列表
-        </button>
-      </div>
-
-      {/* PLAYLIST DRAWER OVERLAY */}
-      <AnimatePresence>
-        {showPlaylistDrawer && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-end justify-center font-sans">
-            {/* Click backdrop to exit */}
-            <div className="absolute inset-0 z-0" onClick={() => setShowPlaylistDrawer(false)} />
-
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-              className={`w-full max-w-sm rounded-t-3xl p-5 shadow-2xl relative border-t z-10 font-sans max-h-[70vh] flex flex-col ${
-                isDark 
-                  ? 'bg-[#0f172a] border-slate-800 text-gray-100' 
-                  : 'bg-white border-stone-200 text-stone-900'
-              }`}
-            >
-              {/* Drawer handle line */}
-              <div className="w-10 h-1 bg-gray-500/20 rounded-full mx-auto mb-4 shrink-0" />
-
-              <div className="flex justify-between items-center mb-4 shrink-0 select-none">
-                <div className="flex items-center gap-1.5">
-                  <Bookmark className="w-4 h-4 text-sky-500" />
-                  <h3 className="text-xs font-extrabold font-sans">当前播放列表</h3>
-                  <span className="text-[10px] opacity-40">({categoryTracks.length}首)</span>
-                </div>
-                <button
-                  onClick={() => setShowPlaylistDrawer(false)}
-                  className="p-1 rounded-full hover:bg-gray-500/10 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Tracks List inside Drawer */}
-              <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 pb-2" id="playlist_drawer_scroll">
-                {categoryTracks.map((tr, trIdx) => {
-                  const isActive = trIdx === (sliderLevel - 1);
-                  return (
-                    <div
-                      key={tr.id}
-                      onClick={() => {
-                        audioEngine.ensureContext();
-                        if (tr.isPremium && !isPremiumUser) {
-                          onOpenSubscribeModal();
-                          return;
-                        }
-                        setSliderLevel(trIdx + 1);
-                        setIsPlaying(true);
-                      }}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                        isActive
-                          ? isDark 
-                            ? 'border-sky-500 bg-sky-950/20 text-sky-400' 
-                            : 'border-sky-400 bg-sky-50/40 text-sky-950 shadow-sm'
-                          : isDark 
-                            ? 'border-slate-900 bg-slate-900/30 hover:bg-slate-900/70' 
-                            : 'border-stone-150 bg-stone-50/50 hover:bg-stone-100/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {isActive && isPlaying ? (
-                          <div className="flex gap-0.5 items-end h-3 shrink-0">
-                            <span className="w-0.5 h-2 bg-sky-500 animate-bounce" style={{ animationDelay: '0.1s' }} />
-                            <span className="w-0.5 h-3 bg-sky-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
-                            <span className="w-0.5 h-1 bg-sky-500 animate-bounce" style={{ animationDelay: '0.5s' }} />
-                          </div>
-                        ) : (
-                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-sky-500' : 'bg-gray-500/35'}`} />
-                        )}
-
-                        <div className="text-left truncate min-w-0">
-                          <p className="text-xs font-bold truncate leading-normal">{tr.title.split(' • ')[1] || tr.title}</p>
-                          <p className="text-[9.5px] opacity-45 truncate mt-0.5 font-normal leading-normal">{tr.desc}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 font-mono text-[9px] text-gray-400 shrink-0">
-                        {tr.isPremium && (
-                          <span className="text-[7.5px] border border-amber-500/40 text-amber-500 px-1 rounded uppercase font-black shrink-0 scale-90">
-                            PRO
-                          </span>
-                        )}
-                        <span>{formatTime(tr.duration)}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* 4. DYNAMIC EFFECT MUSIC TRACKS LIST */}
-      <div>
-        <h3 className={`text-xs font-semibold tracking-wider mb-2 flex items-center gap-1 uppercase ${
-          isDark ? 'text-slate-400' : 'text-stone-500'
-        }`}>
-          <Music className="w-3.5 h-3.5" /> {selectedCategory === 'sleep' ? '安眠曲库' : selectedCategory === 'focus' ? '专注曲库' : selectedCategory === 'rest' ? '静心曲库' : selectedCategory === 'energy' ? '提神曲库' : '五音曲库'}
-        </h3>
-
-        {/* Sliding card layout */}
-        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x" id="category_tracks_horizon_scroller">
-          {categoryTracks.map((track, idx) => {
-            const isCurrent = idx === (sliderLevel - 1);
+      {/* 3. PROFESSIONAL SLEEP TIMER WIDGET */}
+      <div className={`p-4 rounded-2xl border transition-all ${
+        isDark ? 'bg-slate-950/60 border-slate-900 shadow-inner' : 'bg-white border-stone-200/80 shadow-sm'
+      }`} id="sleep_timer_box">
+        <div className="flex justify-between items-center mb-1.5 font-sans">
+          <span className={`text-[11px] font-extrabold flex items-center gap-1.5 ${
+            isDark ? 'text-amber-400' : 'text-amber-700'
+          }`}>
+            <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" /> 定时关闭
+          </span>
+          {sleepTimerSeconds > 0 && (
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
+              倒计时: {formatSleepTimer(sleepTimerSeconds)}
+            </span>
+          )}
+        </div>
+        
+        {/* Shortcut Quick options grid */}
+        <div className="grid grid-cols-5 gap-1 text-[10.5px] font-sans">
+          {[
+            { label: '关闭', value: 0 },
+            { label: '10分', value: 10 },
+            { label: '20分', value: 20 },
+            { label: '30分', value: 30 },
+            { label: '60分', value: 60 }
+          ].map(opt => {
+            const isSelected = (opt.value === 0 && sleepTimerSeconds === 0) || 
+                              (opt.value !== 0 && Math.abs(sleepTimerSeconds - opt.value * 60) < 10);
             return (
-              <div
-                key={track.id}
+              <button
+                key={opt.label}
                 onClick={() => {
-                  if (track.isPremium && !isPremiumUser) {
-                    onOpenSubscribeModal();
-                    return;
+                  if (opt.value === 0) {
+                    setSleepTimerSeconds(0);
+                  } else {
+                    setSleepTimerSeconds(opt.value * 60);
                   }
-                  setSliderLevel(idx + 1);
-                  setIsPlaying(true);
                 }}
-                className={`snap-center shrink-0 w-44 p-3 rounded-xl border cursor-pointer transition-all duration-300 ${
-                  isCurrent
-                    ? isDark 
-                      ? 'border-sky-500/50 bg-sky-950/20' 
-                      : 'border-sky-400 bg-sky-50/40 text-sky-950 shadow-sm'
-                    : isDark 
-                      ? 'border-slate-900 bg-slate-900/40 hover:bg-slate-900/80 hover:border-slate-800' 
-                      : 'border-stone-200 bg-stone-50/50 hover:bg-stone-150 hover:border-stone-300 text-stone-800'
+                className={`py-1 rounded-lg border text-center font-bold cursor-pointer transition-all ${
+                  isSelected
+                    ? isDark
+                      ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 font-extrabold'
+                      : 'bg-[#a67c52]/10 border-[#a67c52]/40 text-[#a67c52] font-extrabold'
+                    : isDark
+                      ? 'bg-slate-900/30 border-slate-800 text-gray-400 hover:text-gray-200'
+                      : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
                 }`}
               >
-                <div className="flex items-center gap-1 mb-1 justify-between">
-                  <span className={`text-[11px] font-bold font-sans truncate ${
-                    isCurrent ? 'text-sky-500' : isDark ? 'text-gray-300' : 'text-stone-750'
-                  }`}>
-                    {track.title.split(' • ')[1] || track.title}
-                  </span>
-                  {track.isPremium && (
-                    <span className="text-[7.5px] border border-amber-500/40 text-amber-500 px-1 rounded uppercase font-black shrink-0 scale-90">
-                      PRO
-                    </span>
-                  )}
-                </div>
-                <p className={`text-[9.5px] font-sans line-clamp-2 leading-relaxed h-7 overflow-hidden ${
-                  isDark ? 'text-gray-500' : 'text-stone-500'
-                }`}>
-                  {track.desc}
-                </p>
-                <div className="flex justify-between items-center mt-2 pt-1 border-t border-slate-900/20 text-[9px] text-gray-500 font-mono">
-                  <span>{track.intensityLabel}</span>
-                  <span>{formatTime(track.duration)}</span>
-                </div>
-              </div>
+                {opt.label}
+              </button>
             );
           })}
-
-          {/* Discover More active card */}
-          <div
-            onClick={() => setShowFullLibraryModal(true)}
-            className={`snap-center shrink-0 w-32 p-3 rounded-xl border cursor-pointer transition-all duration-300 flex flex-col items-center justify-center text-center ${
-              isDark 
-                ? 'border-sky-500/25 bg-sky-950/15 text-sky-400 hover:bg-sky-950/30' 
-                : 'border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-100'
-            }`}
-          >
-            <ChevronRight className="w-5 h-5 mb-1.5 text-sky-500 animate-pulse" />
-            <span className="text-[10px] font-bold font-sans">发现更多</span>
-            <span className="text-[8px] opacity-60 mt-0.5 font-sans">查看全部曲目</span>
-          </div>
         </div>
       </div>
 
@@ -823,7 +739,7 @@ export default function MeditationPlayer({
               <div className="my-5 p-3.5 bg-[#070b13] border border-slate-900 rounded-xl text-left flex flex-col gap-1 text-[11px] text-gray-400 justify-center font-sans">
                 <p className="text-amber-500 font-bold mb-1.5">高级专属专享终身，只需一月 ¥ 19.9：</p>
                 <p>✓ 100% 畅顺极致无限播放，无流限干扰</p>
-                <p>✓ 解锁 PRO 付费尊贵版 5级 古法五音和中乐</p>
+                <p>✓ 解锁 PRO 付费尊贵版 5级 古法疗愈和中乐</p>
                 <p>✓ 支持多地云数据库安全自动同步加密</p>
               </div>
 
@@ -888,13 +804,13 @@ export default function MeditationPlayer({
                 <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="搜索想听的功效或名..."
+                  placeholder="搜索想听的声音或曲名..."
                   value={libraryFilterText}
                   onChange={(e) => setLibraryFilterText(e.target.value)}
                   className={`w-full text-[11px] pl-8.5 pr-8 py-2 rounded-xl focus:outline-none transition-all ${
                     isDark 
-                      ? 'bg-slate-900/80 border border-slate-800 focus:border-sky-500/50 text-gray-200' 
-                      : 'bg-stone-100 border border-stone-200 focus:border-sky-500 text-stone-800'
+                      ? 'bg-slate-900/80 border border-slate-800 focus:border-amber-500/50 text-gray-200' 
+                      : 'bg-[#faf6ed] border border-[#ecdcb9] focus:border-[#a67c52] text-[#4e3629]'
                   }`}
                 />
                 {libraryFilterText && (
@@ -932,8 +848,8 @@ export default function MeditationPlayer({
                         className={`p-3 rounded-xl border text-left cursor-pointer transition-all duration-300 ${
                           selectedCategory === track.purpose && sliderLevel === (subIdx + 1)
                             ? isDark 
-                              ? 'border-sky-500 bg-sky-950/20 text-white' 
-                              : 'border-sky-500 bg-sky-50/55 text-sky-950 font-bold'
+                              ? 'border-amber-500 bg-amber-950/20 text-white' 
+                              : 'border-[#a67c52] bg-[#a67c52]/10 text-[#a67c52] font-bold'
                             : isDark 
                               ? 'border-slate-800 bg-slate-900/30 hover:bg-slate-900/70 text-gray-300' 
                               : 'border-stone-200 bg-stone-50/50 hover:bg-stone-100/50 text-stone-850'
@@ -942,7 +858,7 @@ export default function MeditationPlayer({
                         <div className="flex justify-between items-center mb-1">
                           <span className={`text-[11.5px] font-extrabold truncate ${
                             selectedCategory === track.purpose && sliderLevel === (subIdx + 1)
-                              ? 'text-sky-500' 
+                              ? 'text-amber-500' 
                               : isDark ? 'text-gray-200' : 'text-stone-850'
                           }`}>
                             {track.title}
@@ -955,9 +871,9 @@ export default function MeditationPlayer({
                             )}
                             {isSelectedAndPlaying && (
                               <span className="flex gap-0.5 h-2 items-end">
-                                <span className="w-0.5 bg-sky-500 animate-bounce h-2" style={{ animationDelay: '0.1s' }} />
-                                <span className="w-0.5 bg-sky-500 animate-bounce h-1.5" style={{ animationDelay: '0.3s' }} />
-                                <span className="w-0.5 bg-sky-500 animate-bounce h-2" style={{ animationDelay: '0.5s' }} />
+                                <span className="w-0.5 bg-amber-500 animate-bounce h-2" style={{ animationDelay: '0.1s' }} />
+                                <span className="w-0.5 bg-amber-500 animate-bounce h-1.5" style={{ animationDelay: '0.3s' }} />
+                                <span className="w-0.5 bg-amber-500 animate-bounce h-2" style={{ animationDelay: '0.5s' }} />
                               </span>
                             )}
                           </div>
