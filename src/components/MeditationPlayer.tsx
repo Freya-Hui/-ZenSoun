@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipForward, SkipBack, ShieldCheck, Star, Sparkles, Volume2, Music, Lock, Heart, VolumeX, Moon, Target, Zap, Search, X, ChevronRight, Bookmark, Clock, Timer, ArrowRight } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, ShieldCheck, Star, Sparkles, Volume2, Music, Lock, Heart, VolumeX, Moon, Target, Zap, Search, X, ChevronRight, Bookmark, Clock, Timer, ArrowRight, Repeat, ListMusic } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AudioVisualizer from './AudioVisualizer';
 import { audioEngine } from '../utils/audioEngine';
+import { getSupabase } from '../lib/supabase';
 
 interface Track {
   id: string;
@@ -13,6 +14,7 @@ interface Track {
   isPremium: boolean;
   intensityLabel: string;
   audioKeyword: string;
+  audioUrl?: string;
 }
 
 interface PlayerProps {
@@ -81,12 +83,99 @@ export default function MeditationPlayer({
   // Timer state for Free Users countdown (60s Limit)
   const [freeTimerLeft, setFreeTimerLeft] = useState(60);
   const [showTimedOutModal, setShowTimedOutModal] = useState(false);
-  const [playMode, setPlayMode] = useState<'loop' | 'single' | 'random'>('loop');
+  const [playMode, setPlayMode] = useState<'loop' | 'single' | 'random'>('single');
+  const [isLooping, setIsLooping] = useState<boolean>(true);
   const [showPlaylistDrawer, setShowPlaylistDrawer] = useState(false);
 
   // Auto-shutdown sleep timer states
   const [sleepTimerSeconds, setSleepTimerSeconds] = useState<number>(0);
   const sleepTimerRef = useRef<any>(null);
+
+  // Dynamic playlist versioning & HTML5 Audio element reference
+  const [playlistVersion, setPlaylistVersion] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Helper mappings between frontend category UI key and DB slug format
+  const getQuerySlug = (cat: string): string => {
+    const map: Record<string, string> = {
+      sleep: 'sleep',
+      focus: 'focus',
+      rest: 'zen',
+      energy: 'wake',
+      wuyin: 'ancient'
+    };
+    return map[cat] || cat;
+  };
+
+  const getFrontendPurpose = (slug: string): 'sleep' | 'focus' | 'rest' | 'energy' | 'wuyin' => {
+    const map: Record<string, 'sleep' | 'focus' | 'rest' | 'energy' | 'wuyin'> = {
+      sleep: 'sleep',
+      focus: 'focus',
+      zen: 'rest',
+      wake: 'energy',
+      ancient: 'wuyin',
+      rest: 'rest',
+      energy: 'energy',
+      wuyin: 'wuyin'
+    };
+    return map[slug] || 'sleep';
+  };
+
+  const mapDbTrackToTrack = (dbTrack: any): Track => {
+    return {
+      id: dbTrack.id?.toString() || Math.random().toString(),
+      title: dbTrack.title || '无标题音轨',
+      desc: dbTrack.description || dbTrack.desc || '暂无描述',
+      duration: dbTrack.duration ? Number(dbTrack.duration) : 300,
+      purpose: selectedCategory,
+      isPremium: dbTrack.is_premium ?? dbTrack.isPremium ?? false,
+      intensityLabel: dbTrack.intensity_label || dbTrack.intensityLabel || '缓流 (1级)',
+      audioKeyword: dbTrack.audio_keyword || dbTrack.audioKeyword || 'bowl',
+      audioUrl: dbTrack.audio_url || dbTrack.audioUrl || ''
+    };
+  };
+
+  // 2. 编写一个 useEffect 监听当前选中的分类导航 (category_slug)
+  useEffect(() => {
+    let active = true;
+    const fetchTracksFromSupabase = async () => {
+      const supabase = getSupabase();
+      if (!supabase) {
+        console.warn('Supabase client unavailable, using local synthesized custom tracks.');
+        return;
+      }
+      try {
+        const currentSlug = getQuerySlug(selectedCategory);
+        // 3. 当用户切换分类时执行
+        const { data, error } = await supabase
+          .from('music_tracks')
+          .select('*')
+          .eq('category_slug', currentSlug)
+          .order('sort_order', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching tracks from Supabase limit/credentials:', error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const mapped = data.map(mapDbTrackToTrack);
+          if (active) {
+            tracksData[selectedCategory] = mapped;
+            setPlaylistVersion(v => v + 1); // Triggers component state update safely
+          }
+        }
+      } catch (err) {
+        console.error('Failed to pull custom playlist from Supabase:', err);
+      }
+    };
+
+    fetchTracksFromSupabase();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCategory]);
 
   // Sync Web Audio High Fidelity (lossless EQ effect) on switch
   useEffect(() => {
@@ -181,7 +270,7 @@ export default function MeditationPlayer({
         audioEngine.ensureContext();
         const { category, level } = customEvent.detail;
         if (category) {
-          setSelectedCategory(category);
+          setSelectedCategory(getFrontendPurpose(category));
         }
         if (level !== undefined) {
           setSliderLevel(level);
@@ -192,7 +281,9 @@ export default function MeditationPlayer({
     const handleRemoteMode = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail && customEvent.detail.mode) {
-        setPlayMode(customEvent.detail.mode);
+        const nextM = customEvent.detail.mode;
+        setPlayMode(nextM);
+        setIsLooping(nextM === 'single');
       }
     };
 
@@ -209,7 +300,7 @@ export default function MeditationPlayer({
       window.removeEventListener('zensound-remote-play', handleRemotePlay);
       window.removeEventListener('zensound-remote-mode', handleRemoteMode);
     };
-  }, [isPlaying, activeTrack, sliderLevel, selectedCategory, isPremiumUser, playMode]);
+  }, [isPlaying, activeTrack, sliderLevel, selectedCategory, isPremiumUser, playMode, isLooping]);
 
   // Reset progress when active track changes
   useEffect(() => {
@@ -218,26 +309,112 @@ export default function MeditationPlayer({
     // If playing, restart audioEngine and update
     if (isPlaying) {
       audioEngine.updateBrainwave(activeTrack.purpose, 0.4);
-      audioEngine.playMelody(activeTrack.audioKeyword, 2400);
+      if (!activeTrack.audioUrl) {
+        audioEngine.playMelody(activeTrack.audioKeyword, 2400);
+      } else {
+        audioEngine.stopMelody();
+      }
     }
   }, [activeTrack]);
+
+  // Synchronize HTML5 Audio element src & playback state safely
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+    const audio = audioRef.current;
+
+    // Apply loop status directly to HTML5 Audio element for gapless playback
+    audio.loop = isLooping;
+
+    if (isPlaying) {
+      if (activeTrack && activeTrack.audioUrl) {
+        // Stop background synthesized melodies when we have a full streaming track
+        audioEngine.stopMelody();
+
+        if (audio.src !== activeTrack.audioUrl) {
+          audio.src = activeTrack.audioUrl;
+          audio.load();
+        }
+        audio.play().catch(err => {
+          console.warn('HTML5 Audio playback interrupted or failed:', err);
+        });
+      } else {
+        audio.pause();
+        audioEngine.playMelody(activeTrack.audioKeyword, 2400);
+      }
+    } else {
+      audio.pause();
+      // Keep background ambient noises if mixed, but stop active main synthesizer loop
+      audioEngine.stopMelody();
+    }
+  }, [isPlaying, activeTrack?.id, activeTrack?.audioUrl, activeTrack?.audioKeyword, isLooping]);
+
+  // Handle native "ended" event when we are NOT looping (i.e. playlist advancement)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleEndedEvent = () => {
+      if (!isLooping) {
+        handleNextTrack();
+      } else {
+        audio.currentTime = 0;
+        audio.play().catch(err => console.warn('HTML5 Audio loop transition failed:', err));
+        setPlayProgress(0);
+      }
+    };
+
+    audio.addEventListener('ended', handleEndedEvent);
+    return () => {
+      audio.removeEventListener('ended', handleEndedEvent);
+    };
+  }, [isLooping, activeTrack, sliderLevel, categoryTracks]);
+
+  // Clean up audio element on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+    };
+  }, []);
 
   // Handle Playback triggers
   useEffect(() => {
     if (isPlaying) {
       // 1. Play central solfeggio healing beat in background programmatically
       audioEngine.updateBrainwave(activeTrack.purpose, 0.4);
-      audioEngine.playMelody(activeTrack.audioKeyword, 2400);
+      if (!activeTrack.audioUrl) {
+        audioEngine.playMelody(activeTrack.audioKeyword, 2400);
+      }
 
       // 2. Playback progress bar simulation
       progressTimerRef.current = setInterval(() => {
-        setPlayProgress(prev => {
-          if (prev >= activeTrack.duration) {
-            handleNextTrack();
-            return 0;
+        const audio = audioRef.current;
+        if (audio && activeTrack?.audioUrl && audio.duration) {
+          const current = Math.floor(audio.currentTime);
+          setPlayProgress(current);
+          if (audio.ended || current >= Math.floor(audio.duration)) {
+            if (isLooping) {
+              setPlayProgress(0);
+            } else {
+              handleNextTrack();
+            }
           }
-          return prev + 1;
-        });
+        } else {
+          setPlayProgress(prev => {
+            if (prev >= activeTrack.duration) {
+              if (isLooping) {
+                return 0;
+              }
+              handleNextTrack();
+              return 0;
+            }
+            return prev + 1;
+          });
+        }
       }, 1000);
 
       // 3. Free Users 60 Sec Countdown Restriction rule implementation!
@@ -248,6 +425,7 @@ export default function MeditationPlayer({
               // Pause immediately
               setIsPlaying(false);
               audioEngine.stopAll();
+              if (audioRef.current) audioRef.current.pause();
               setShowTimedOutModal(true);
               clearInterval(countdownTimerRef.current);
               return 60;
@@ -258,6 +436,7 @@ export default function MeditationPlayer({
       }
     } else {
       audioEngine.stopAll();
+      if (audioRef.current) audioRef.current.pause();
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     }
@@ -325,8 +504,15 @@ export default function MeditationPlayer({
 
   const handleNextTrack = () => {
     audioEngine.ensureContext();
-    const maxL = selectedCategory === 'wuyin' ? 5 : 3;
+    const maxL = categoryTracks.length;
+    if (maxL === 0) return;
+
     if (playMode === 'single') {
+      const audio = audioRef.current;
+      if (audio && activeTrack.audioUrl) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.warn(e));
+      }
       setPlayProgress(0);
       setFreeTimerLeft(60);
       setIsPlaying(true);
@@ -359,7 +545,9 @@ export default function MeditationPlayer({
 
   const handlePrevTrack = () => {
     audioEngine.ensureContext();
-    const maxL = selectedCategory === 'wuyin' ? 5 : 3;
+    const maxL = categoryTracks.length;
+    if (maxL === 0) return;
+
     if (playMode === 'random') {
       const randLevel = Math.floor(Math.random() * maxL) + 1;
       setSliderLevel(randLevel);
@@ -571,6 +759,98 @@ export default function MeditationPlayer({
         </div>
       </div>
 
+      {/* PROFESSIONAL CHAMPAGNE GOLD CONTROLS BAR */}
+      <div className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+        isDark ? 'bg-slate-950/50 border-slate-900 shadow-inner' : 'bg-white border-stone-200/80 shadow-xs'
+      }`} id="tactile_core_playback_controls">
+        
+        {/* Toggle IsLooping (单曲/列表循环) */}
+        <button
+          onClick={() => {
+            const nextLoop = !isLooping;
+            setIsLooping(nextLoop);
+            setPlayMode(nextLoop ? 'single' : 'loop');
+            
+            // Sync up to App or play mode dispatch natively
+            window.dispatchEvent(new CustomEvent('zensound-remote-mode', {
+              detail: { mode: nextLoop ? 'single' : 'loop' }
+            }));
+          }}
+          className={`p-2 rounded-xl cursor-pointer transition-all flex items-center gap-1.5 text-[10px] font-bold ${
+            isLooping 
+              ? 'bg-[#a67c52]/15 text-amber-500 border border-amber-500/30' 
+              : isDark ? 'bg-slate-900/40 text-gray-400 border border-slate-800/60' : 'bg-stone-50 text-stone-600 border border-stone-200/65'
+          }`}
+          title={isLooping ? "当前：单曲守护无缝循环" : "当前：列表顺序徐徐流转"}
+        >
+          {isLooping ? (
+            <>
+              <Repeat className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+              <span className="text-amber-500 font-extrabold">单曲循环</span>
+            </>
+          ) : (
+            <>
+              <Repeat className="w-3.5 h-3.5 opacity-50" />
+              <span>顺序播放</span>
+            </>
+          )}
+        </button>
+
+        {/* Previous, Play/Pause, Next controls */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => handlePrevTrack()}
+            className={`p-2.5 rounded-full cursor-pointer transition-all active:scale-95 ${
+              isDark ? 'hover:bg-slate-900 text-gray-300' : 'hover:bg-[#a67c52]/10 text-[#5c4033]'
+            }`}
+            title="上一首"
+          >
+            <SkipBack className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => handlePlayPause()}
+            className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-md ${
+              isDark 
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-450 text-white shadow-amber-900/30' 
+                : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-[#a67c52]/20'
+            }`}
+            title={isPlaying ? "暂停" : "激活声频"}
+          >
+            {isPlaying ? (
+              <Pause className="w-4.5 h-4.5 fill-white text-white" />
+            ) : (
+              <Play className="w-4.5 h-4.5 fill-white text-white ml-0.5" />
+            )}
+          </button>
+
+          <button
+            onClick={() => handleNextTrack()}
+            className={`p-2.5 rounded-full cursor-pointer transition-all active:scale-95 ${
+              isDark ? 'hover:bg-slate-900 text-gray-300' : 'hover:bg-[#a67c52]/10 text-[#5c4033]'
+            }`}
+            title="下一首"
+          >
+            <SkipForward className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* View Playlist / Library button */}
+        <button
+          onClick={() => {
+            setLibraryFilterText('');
+            setShowFullLibraryModal(true);
+          }}
+          className={`p-2 rounded-xl cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold ${
+            isDark ? 'bg-slate-900/40 text-gray-400 hover:text-gray-300 hover:bg-slate-900' : 'bg-[#a67c52]/10 text-[#a67c52] hover:bg-[#a67c52]/15'
+          }`}
+          title="打开曲目全库"
+        >
+          <ListMusic className="w-3.5 h-3.5 text-amber-500" />
+          <span className={isDark ? "text-gray-400 font-bold" : "text-[#a67c52] font-bold"}>静心雅集</span>
+        </button>
+      </div>
+
       {/* STANDARD FREE ACCORDANCE COUNTDOWN BANNER */}
       {!isPremiumUser && isPlaying && (
         <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/25 flex items-center justify-between text-[10.5px] text-orange-500 font-sans">
@@ -609,7 +889,7 @@ export default function MeditationPlayer({
           <input
             type="range"
             min="1"
-            max={selectedCategory === 'wuyin' ? "5" : "3"}
+            max={categoryTracks.length > 0 ? categoryTracks.length.toString() : (selectedCategory === 'wuyin' ? "5" : "3")}
             step="1"
             value={sliderLevel}
             onChange={(e) => {
@@ -625,20 +905,29 @@ export default function MeditationPlayer({
           />
           
           <div className="flex justify-between text-[9px] font-sans text-gray-500 px-1 mt-1.5 selection:bg-transparent">
-            {Array.from({ length: selectedCategory === 'wuyin' ? 5 : 3 }).map((_, idx) => {
+            {Array.from({ length: categoryTracks.length > 0 ? categoryTracks.length : (selectedCategory === 'wuyin' ? 5 : 3) }).map((_, idx) => {
               const lvl = idx + 1;
               const isSelected = sliderLevel === lvl;
+              const trackItem = categoryTracks[idx];
               let label = `${lvl}级`;
-              if (selectedCategory === 'wuyin') {
-                if (lvl === 1) label = '宫脾';
-                else if (lvl === 2) label = '商肺';
-                else if (lvl === 3) label = '角肝';
-                else if (lvl === 4) label = '徵心';
-                else if (lvl === 5) label = '羽肾';
+              if (trackItem) {
+                const parts = trackItem.title.split(' • ');
+                label = parts[1] || parts[0];
+                if (label.length > 7) {
+                  label = label.slice(0, 6) + '..';
+                }
               } else {
-                if (lvl === 1) label = '1级 缓流';
-                else if (lvl === 2) label = '2级 沉浸';
-                else if (lvl === 3) label = '3级 极致';
+                if (selectedCategory === 'wuyin') {
+                  if (lvl === 1) label = '宫脾';
+                  else if (lvl === 2) label = '商肺';
+                  else if (lvl === 3) label = '角肝';
+                  else if (lvl === 4) label = '徵心';
+                  else if (lvl === 5) label = '羽肾';
+                } else {
+                  if (lvl === 1) label = '1级 缓流';
+                  else if (lvl === 2) label = '2级 沉浸';
+                  else if (lvl === 3) label = '3级 极致';
+                }
               }
               return (
                 <span
