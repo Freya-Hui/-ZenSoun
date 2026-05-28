@@ -1,0 +1,6 @@
+{
+  "name": "深愈静音 - 疗愈音乐播放器",
+  "description": "一款极致优雅宁静的大脑愈疗与白噪音自定义软件。包含古典木鱼、静心钵、深呼吸声音引导、定制日记愈疗反馈和灵感配方社群。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
