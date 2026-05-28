@@ -436,7 +436,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col justify-center items-center py-4 md:py-8 font-sans antialiased overflow-x-hidden relative transition-colors duration-300 ${
+    <div className={`min-h-[100dvh] sm:min-h-screen flex flex-col justify-start sm:justify-center items-center py-0 sm:py-4 md:py-8 font-sans antialiased overflow-x-hidden relative transition-colors duration-300 ${
       theme === 'night' ? 'bg-[#060a13] text-gray-200 selection:bg-sky-500/25' : 'bg-[#f4ebd9] text-[#4e3629] selection:bg-[#a67c52]/20'
     }`}>
       {/* Dynamic ambient star cloud background */}
@@ -471,7 +471,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="w-full max-w-sm shrink-0 md:max-w-md relative z-10" id="main_viewport">
+      <div className="w-full sm:max-w-sm md:max-w-md shrink-0 relative z-10" id="main_viewport">
         {/* TOP STATUS LOGO */}
         <div className="flex items-center justify-between px-5 py-2.5 text-center mb-1">
           <div className="flex items-center gap-2">
@@ -528,10 +528,10 @@ export default function App() {
         </div>
 
         {/* --- PREMIUM PHONE ENCLOSING WRAPPER FRAME (BEZEL DESIGN FEEL) --- */}
-        <div className={`w-full h-[620px] rounded-[36px] overflow-hidden flex flex-col justify-between shrink-0 relative transition-all duration-300 ${
+        <div className={`w-full h-screen sm:h-[620px] rounded-none sm:rounded-[36px] overflow-hidden flex flex-col justify-between shrink-0 relative transition-all duration-300 ${
           theme === 'night'
-            ? 'bg-[#090e1a] border-4 border-[#121c33] shadow-[0_25px_60px_rgba(0,0,0,0.85)]'
-            : 'bg-[#fdfaf3] border-4 border-[#dacdb9] shadow-[0_20px_50px_rgba(100,70,40,0.1)] text-[#4e3629]'
+            ? 'bg-[#090e1a] border-0 sm:border-4 border-[#121c33] shadow-none sm:shadow-[0_25px_60px_rgba(0,0,0,0.85)]'
+            : 'bg-[#fdfaf3] border-0 sm:border-4 border-[#dacdb9] shadow-none sm:shadow-[0_20px_50px_rgba(100,70,40,0.1)] text-[#4e3629]'
         }`} id="phone_wrapper_frame">
           
           {!isLoggedIn ? (

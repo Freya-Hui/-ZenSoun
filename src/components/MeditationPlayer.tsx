@@ -5,6 +5,139 @@ import AudioVisualizer from './AudioVisualizer';
 import { audioEngine } from '../utils/audioEngine';
 import { getSupabase } from '../lib/supabase';
 
+// NATIVE BINAURAL BEATS BRAINWAVE GENERATOR (Web Audio API Architecture)
+class LocalBinauralGenerator {
+  private ctx: AudioContext | null = null;
+  private oscL: OscillatorNode | null = null;
+  private oscR: OscillatorNode | null = null;
+  private gainL: GainNode | null = null;
+  private gainR: GainNode | null = null;
+  private merger: ChannelMergerNode | null = null;
+  private masterGain: GainNode | null = null;
+  private isBinauralPlaying = false;
+
+  init() {
+    if (this.ctx) return;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      this.ctx = new AudioContextClass();
+
+      // Setup final master gain for this binaural loop
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.setValueAtTime(0.06, this.ctx.currentTime); // Gentle overlay level to avoid harshness
+
+      // Output connected directly to speakers/headphones
+      this.masterGain.connect(this.ctx.destination);
+    } catch (e) {
+      console.error('Failed to initialize browser audio context for binaural beats:', e);
+    }
+  }
+
+  start(offsetFreq: number) {
+    this.init();
+    if (!this.ctx || !this.masterGain) return;
+
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+
+    this.stop(); // Clear any existing oscillators first
+
+    // 2. Dual channel independent oscillator links
+    this.oscL = this.ctx.createOscillator();
+    this.oscR = this.ctx.createOscillator();
+
+    this.gainL = this.ctx.createGain();
+    this.gainR = this.ctx.createGain();
+
+    this.merger = this.ctx.createChannelMerger(2);
+
+    this.oscL.type = 'sine';
+    this.oscR.type = 'sine';
+
+    // 4. Set Fixed base frequency carrier at 200Hz (Left ear), calculate offset for Right ear
+    const baseCarrier = 200;
+    this.oscL.frequency.setValueAtTime(baseCarrier, this.ctx.currentTime);
+    this.oscR.frequency.setValueAtTime(baseCarrier + offsetFreq, this.ctx.currentTime);
+
+    // Initial warm gain levels for stereo vibration
+    this.gainL.gain.setValueAtTime(0.5, this.ctx.currentTime);
+    this.gainR.gain.setValueAtTime(0.5, this.ctx.currentTime);
+
+    // Connect individual left and right independent audio chains
+    this.oscL.connect(this.gainL);
+    this.oscR.connect(this.gainR);
+
+    // Dynamic Merger split to generate actual psychoacoustic beat
+    this.gainL.connect(this.merger, 0, 0); // Left channel merger input 0
+    this.gainR.connect(this.merger, 0, 1); // Right channel merger input 1
+
+    // 3. Connect merger output into global gain controller, output to headphone destination
+    this.merger.connect(this.masterGain);
+
+    this.oscL.start();
+    this.oscR.start();
+
+    this.isBinauralPlaying = true;
+    console.log(`[Binaural Wave] Operating left at ${baseCarrier}Hz, right at ${baseCarrier + offsetFreq}Hz. Offset tune: ${offsetFreq}Hz beat.`);
+  }
+
+  updateFrequency(offsetFreq: number) {
+    if (!this.oscR || !this.ctx) return;
+    const baseCarrier = 200;
+    this.oscR.frequency.setTargetAtTime(baseCarrier + offsetFreq, this.ctx.currentTime, 0.1);
+  }
+
+  updateVolume(volume: number) {
+    if (!this.masterGain || !this.ctx) return;
+    this.masterGain.gain.setTargetAtTime(volume * 0.06, this.ctx.currentTime, 0.1);
+  }
+
+  stop() {
+    if (this.oscL) {
+      try { this.oscL.stop(); } catch (e) {}
+      this.oscL = null;
+    }
+    if (this.oscR) {
+      try { this.oscR.stop(); } catch (e) {}
+      this.oscR = null;
+    }
+    this.isBinauralPlaying = false;
+  }
+}
+
+// Map each Category and level directly to beautiful therapeutic peak brainwave offsets
+const getBinauralBeatFreq = (category: string, level: number): number => {
+  if (category === 'sleep') {
+    if (level === 1) return 1.5;  // Core Delta: Deep recuperation, sleep prep
+    if (level === 2) return 3.0;  // Delta/Theta: Hypnotic transition
+    return 4.5;                 // Deep Theta: Dream space relaxation
+  }
+  if (category === 'focus') {
+    if (level === 1) return 8.0;  // Relaxed Alertness
+    if (level === 2) return 12.0; // Perfect alpha flow for thinking/reading
+    return 15.0;                // Sharp beta spike: hyper focus
+  }
+  if (category === 'rest') {
+    if (level === 1) return 5.5;  // Warm theta for inner centering
+    if (level === 2) return 7.0;  // Healing meditation frequency
+    return 9.0;                 // Alpha relaxing harmony
+  }
+  if (category === 'energy') {
+    if (level === 1) return 13.5; // Brain warming, fatigue sweep
+    if (level === 2) return 24.0; // Dynamic high beta: vibrant wakefulness
+    return 40.0;                // Gamma surge: ultimate mental freshness
+  }
+  if (category === 'wuyin') {
+    if (level === 1) return 5.28; // Gong (Spleen resonance - Golden ratio 528Hz sub-scale)
+    if (level === 2) return 6.18; // Shang (Lung regulation)
+    if (level === 3) return 7.20; // Jiao (Liver clearing)
+    if (level === 4) return 8.52; // Zhi (Heart calming)
+    return 9.99;                // Yu (Kidney storage)
+  }
+  return 6.0;
+};
+
 interface Track {
   id: string;
   title: string;
@@ -94,6 +227,28 @@ export default function MeditationPlayer({
   // Dynamic playlist versioning & HTML5 Audio element reference
   const [playlistVersion, setPlaylistVersion] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Native components-level binaural beats generator reference
+  const binauralGeneratorRef = useRef<LocalBinauralGenerator | null>(null);
+
+  // Dynamically start, update and stop component-level binaural beats on state change
+  useEffect(() => {
+    if (!binauralGeneratorRef.current) {
+      binauralGeneratorRef.current = new LocalBinauralGenerator();
+    }
+    const generator = binauralGeneratorRef.current;
+
+    if (isPlaying) {
+      const beatFreq = getBinauralBeatFreq(selectedCategory, sliderLevel);
+      generator.start(beatFreq);
+    } else {
+      generator.stop();
+    }
+
+    return () => {
+      generator.stop();
+    };
+  }, [isPlaying, selectedCategory, sliderLevel]);
 
   // Helper mappings between frontend category UI key and DB slug format
   const getQuerySlug = (cat: string): string => {
