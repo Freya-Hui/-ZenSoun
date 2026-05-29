@@ -528,7 +528,7 @@ export default function App() {
         </div>
 
         {/* --- PREMIUM PHONE ENCLOSING WRAPPER FRAME (BEZEL DESIGN FEEL) --- */}
-        <div className={`w-full h-screen sm:h-[620px] rounded-none sm:rounded-[36px] overflow-hidden flex flex-col justify-between shrink-0 relative transition-all duration-300 ${
+        <div className={`w-full h-[100dvh] sm:h-[620px] rounded-none sm:rounded-[36px] overflow-hidden flex flex-col justify-between shrink-0 relative transition-all duration-300 ${
           theme === 'night'
             ? 'bg-[#090e1a] border-0 sm:border-4 border-[#121c33] shadow-none sm:shadow-[0_25px_60px_rgba(0,0,0,0.85)]'
             : 'bg-[#fdfaf3] border-0 sm:border-4 border-[#dacdb9] shadow-none sm:shadow-[0_20px_50px_rgba(100,70,40,0.1)] text-[#4e3629]'
@@ -1217,7 +1217,7 @@ export default function App() {
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 50, opacity: 0 }}
-              className="w-full max-w-md h-[95vh] rounded-[24px] overflow-hidden flex flex-col shadow-2xl relative border border-slate-800/80 bg-[#0c101d]"
+              className="w-full max-w-md h-[95dvh] rounded-[24px] overflow-hidden flex flex-col shadow-2xl relative border border-slate-800/80 bg-[#0c101d]"
               id="consultation_modal_window"
             >
               {/* Header block with close panel */}
@@ -1457,7 +1457,7 @@ export default function App() {
         {showSimplePlayerModal && playbackState && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[900] flex items-center justify-center p-3 select-none">
             <div 
-              className={`w-full max-w-md h-[95vh] rounded-[28px] overflow-hidden flex flex-col shadow-2xl relative border transition-all duration-300 ${
+              className={`w-full max-w-md h-[95dvh] rounded-[28px] overflow-hidden flex flex-col shadow-2xl relative border transition-all duration-300 ${
                 theme === 'night' 
                   ? 'border-slate-900 bg-[#070b13] text-gray-200' 
                   : 'border-[#dacdb9]/80 bg-[#fdfaf3] text-[#4e3629]'
