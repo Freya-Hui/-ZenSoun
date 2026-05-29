@@ -313,9 +313,9 @@ export default function MeditationPlayer({
           .select('*')
           .eq('category_slug', currentSlug);
 
-        // Resilient fallback for the development container schema, if the 'music' table is absent in this database
-        if (error && (error.message?.includes('schema cache') || error.message?.includes('Could not find the table'))) {
-          console.log('[Supabase Development Fallback] "music" table not available in current environment database, falling back to "music_tracks"...');
+        // Fallback for development/preview db cache if 'music' table does not exist
+        if (error && (error.message?.includes('schema cache') || error.message?.includes('Could not find') || error.message?.includes('relation "music" does not exist'))) {
+          console.log('[Supabase Development Fallback] "music" table not available in current environment cache, trying "music_tracks"...');
           const fallbackResult = await supabase
             .from('music_tracks')
             .select('*')
