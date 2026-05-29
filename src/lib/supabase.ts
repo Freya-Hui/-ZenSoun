@@ -161,7 +161,11 @@ export async function fetchMuyuPresets(): Promise<MuyuPreset[] | null> {
       .order('id', { ascending: true });
 
     if (error) {
-      console.error('Error fetching Supabase muyu_presets:', error.message);
+      if (error.message && error.message.includes('Could not find the table')) {
+        console.warn('Supabase muyu_presets table not created yet. Local offline presets will be used as fallback.');
+      } else {
+        console.error('Error fetching Supabase muyu_presets:', error.message);
+      }
       return null;
     }
 
@@ -189,7 +193,11 @@ export async function addMuyuPreset(preset: MuyuPreset): Promise<boolean> {
       }]);
 
     if (error) {
-      console.error('Error inserting muyu_preset to Supabase:', error.message);
+      if (error.message && error.message.includes('Could not find the table')) {
+        console.warn('Supabase muyu_presets table not created yet. Cannot save custom preset to cloud.');
+      } else {
+        console.error('Error inserting muyu_preset to Supabase:', error.message);
+      }
       return false;
     }
     return true;

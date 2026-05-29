@@ -636,12 +636,12 @@ export default function PersonalProfile({
 
   return (
     <div className={`relative min-h-full flex flex-col gap-4 pt-3 pb-8 px-4 transition-colors duration-300 ${
-      isDark ? 'bg-[#0a0f1d] text-gray-200' : 'bg-[#faf9f6] text-stone-900'
+      isDark ? 'bg-[#0a0f1d] text-gray-200' : 'bg-[#faf9f6] text-stone-800'
     }`} id="profile_container">
       
       {/* 1. PROFESSIONAL USER CARDS (AESTHETIC UPGRADE) */}
       <div className={`rounded-2xl border p-4 shadow-md flex flex-col gap-3.5 transition-all ${
-        isDark ? 'bg-gradient-to-r from-slate-900 to-[#131d31] border-slate-800' : 'bg-white border-stone-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.02)]'
+        isDark ? 'bg-gradient-to-r from-slate-900 to-[#131d31] border-slate-800' : 'bg-[#fdfbf6] border-[#dacdb9]/80 shadow-sm'
       }`} id="profile_card">
         
         <div className="flex items-start justify-between">
@@ -649,7 +649,7 @@ export default function PersonalProfile({
             <div 
               onClick={() => setShowAvatarPicker(!showAvatarPicker)}
               className={`w-12 h-12 rounded-full border flex items-center justify-center font-bold text-xl select-none shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all relative ${
-                isDark ? 'bg-slate-800 border-amber-500/30' : 'bg-stone-100 border-stone-300/80 text-stone-800'
+                isDark ? 'bg-slate-800 border-amber-500/30' : 'bg-[#f5ead5] border-[#dacdb9] text-[#4e3629]'
               }`}
               title="点击更换修行头像"
             >
@@ -831,7 +831,7 @@ export default function PersonalProfile({
               className={`text-[10px] font-black cursor-pointer transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${
                 isDark 
                   ? 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20 shadow-sm' 
-                  : 'bg-stone-550/10 border-stone-250 text-stone-700 hover:bg-[#faf6ed] shadow-sm'
+                  : 'bg-[#a67c52]/10 border-[#dacdb9]/80 text-[#a67c52] hover:bg-[#faf6ed] shadow-sm'
               }`}
               id="open_trends_btn"
             >
@@ -844,13 +844,13 @@ export default function PersonalProfile({
 
       {/* 2. CHINESE JOURNAL DIARY DIALOG TRIGGER BAR */}
       <div className={`p-4 rounded-2xl border text-center flex flex-col gap-2 transition-all ${
-        isDark ? 'bg-slate-950/60 border-slate-900 shadow-lg' : 'bg-white border-stone-200/85 shadow-[0_4px_16px_rgba(0,0,0,0.03)]'
+        isDark ? 'bg-slate-950/60 border-slate-900 shadow-lg' : 'bg-[#fdfbf6]/60 border-[#dacdb9]/80 shadow-sm'
       }`} id="record_starter_box">
         <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
           <Sparkles className="w-5 h-5 animate-pulse" />
           <h3 className="text-xs font-black tracking-wider uppercase font-sans">心流记录岛</h3>
         </div>
-        <p className={`text-[10px] leading-relaxed max-w-xs mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-stone-500'}`}>
+        <p className={`text-[10px] leading-relaxed max-w-xs mx-auto mb-2 ${isDark ? 'text-gray-500' : 'text-[#826e5e]'}`}>
           闭上眼，默念您的疑惑、委屈或感悟。翻开“答案之书”，或呼出“AI疗愈师”续笔并开方，舒缓您繁杂的身心状态。
         </p>
 

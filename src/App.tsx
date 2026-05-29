@@ -861,6 +861,7 @@ export default function App() {
                     posts={posts}
                     onLikePost={handleLikePost}
                     onImportRecipe={handleImportRecipe}
+                    theme={theme}
                   />
                 )}
 

@@ -139,7 +139,7 @@ export default function CustomSynthesizer({
 
   return (
     <div className={`flex flex-col gap-5 pt-3 pb-8 px-4 transition-colors duration-300 ${
-      isDark ? 'bg-[#0a0f1d] text-gray-200' : 'bg-[#faf9f6] text-stone-900'
+      isDark ? 'bg-[#0a0f1d] text-gray-200' : 'bg-[#faf9f6] text-stone-800'
     }`} id="synth_container">
 
       {/* STEP 1: BRAINWAVE ANNOTATED PRESETS */}

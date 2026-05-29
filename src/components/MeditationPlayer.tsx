@@ -443,6 +443,9 @@ export default function MeditationPlayer({
   // Keep references to callbacks to prevent dependency-triggered infinite rendering
   const onTrackPlayingChangeRef = useRef(onTrackPlayingChange);
   const onPlaybackStateChangeRef = useRef(onPlaybackStateChange);
+  const handlePlayPauseRef = useRef<() => void>(() => {});
+  const handleNextTrackRef = useRef<(isManual?: boolean) => void>(() => {});
+  const handlePrevTrackRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     onTrackPlayingChangeRef.current = onTrackPlayingChange;
@@ -474,13 +477,13 @@ export default function MeditationPlayer({
   // Global Event Listener for floating player actions
   useEffect(() => {
     const handleToggle = () => {
-      handlePlayPause();
+      handlePlayPauseRef.current();
     };
     const handleNext = () => {
-      handleNextTrack();
+      handleNextTrackRef.current(true);
     };
     const handlePrev = () => {
-      handlePrevTrack();
+      handlePrevTrackRef.current();
     };
     const handleRemotePlay = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -523,7 +526,7 @@ export default function MeditationPlayer({
       window.removeEventListener('zensound-remote-mode', handleRemoteMode);
       window.removeEventListener('zensound-pause', handlePause);
     };
-  }, [isPlaying, activeTrack, sliderLevel, selectedCategory, isPremiumUser, playMode, isLooping]);
+  }, []);
 
   // Reset progress when active track changes
   useEffect(() => {
@@ -747,12 +750,12 @@ export default function MeditationPlayer({
     setFadingSymbol({ type: nextIsPlaying ? 'play' : 'pause', id: fadeCountRef.current });
   };
 
-  const handleNextTrack = () => {
+  const handleNextTrack = (isManual = false) => {
     audioEngine.ensureContext();
     const maxL = categoryTracks.length;
     if (maxL === 0) return;
 
-    if (playMode === 'single') {
+    if (playMode === 'single' && !isManual) {
       const audio = audioRef.current;
       if (audio && activeTrack.audioUrl) {
         audio.currentTime = 0;
@@ -811,6 +814,11 @@ export default function MeditationPlayer({
     setIsPlaying(true);
   };
 
+  // Assign the handler refs so that the global event listeners have the freshest closures
+  handlePlayPauseRef.current = handlePlayPause;
+  handleNextTrackRef.current = handleNextTrack;
+  handlePrevTrackRef.current = handlePrevTrack;
+
   const handleLosslessToggle = () => {
     if (!isPremiumUser) {
       // Prompt modal
@@ -839,12 +847,12 @@ export default function MeditationPlayer({
 
   return (
     <div className={`flex flex-col gap-4 pt-3 pb-8 px-4 transition-colors duration-300 ${
-      isDark ? 'bg-[#0a0f1d]' : 'bg-[#faf9f6]'
+      isDark ? 'bg-[#0a0f1d] text-gray-200' : 'bg-[#faf9f6] text-stone-800'
     }`} id="player_tab_container">
       
       {/* CATEGORY BUTTON TABS SWITCHER */}
       <div className={`grid grid-cols-5 gap-0.5 p-1 rounded-xl shrink-0 ${
-        isDark ? 'bg-slate-950/80 border border-slate-900' : 'bg-stone-200/50 border border-stone-200'
+        isDark ? 'bg-slate-950/80 border border-slate-900' : 'bg-[#f2e7d0]/40 border border-[#dacdb9]/50'
       }`}>
         {(Object.keys(categoryLabels) as Array<'sleep' | 'focus' | 'rest' | 'energy' | 'wuyin'>).map(cat => {
           const isSelected = selectedCategory === cat;
@@ -862,7 +870,7 @@ export default function MeditationPlayer({
                   ? isDark 
                     ? 'bg-slate-900 border border-slate-800 text-amber-400 font-bold shadow-md' 
                     : 'bg-[#a67c52]/10 border border-[#a67c52]/20 text-[#a67c52] font-semibold shadow-xs'
-                  : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-stone-500 hover:text-stone-800'
+                  : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-[#826e5e] hover:text-[#4e3629]'
               }`}
             >
               <span className="mb-0.5">
@@ -904,7 +912,7 @@ export default function MeditationPlayer({
         className={`relative w-full h-[115px] rounded-2xl overflow-hidden border transition-all shadow-xl flex flex-col justify-center p-4 flex-none cursor-pointer ${
           isDark 
             ? 'bg-gradient-to-b from-[#0c1629] to-[#040710] border-slate-900' 
-            : 'bg-gradient-to-b from-stone-100 to-white border-stone-200'
+            : 'bg-gradient-to-b from-[#fdfbf6] to-white border-[#dacdb9]/85'
         }`} id="player_panel">
 
         {/* Dynamic Wave Visualization Background */}
@@ -942,7 +950,7 @@ export default function MeditationPlayer({
             handlePrevTrack();
           }}
           className={`absolute left-3 top-1/2 -translate-y-1/2 z-35 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-black/5 hover:bg-black/20 text-gray-400 hover:text-amber-500 hover:scale-105 active:scale-95 ${
-            isDark ? 'border border-slate-800' : 'border border-stone-200 shadow-xs bg-white/50'
+            isDark ? 'border border-slate-800' : 'border border-[#dacdb9]/60 shadow-xs bg-[#fdfbf6]/55'
           }`}
           title="上一首音轨"
         >
@@ -952,10 +960,10 @@ export default function MeditationPlayer({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleNextTrack();
+            handleNextTrack(true);
           }}
           className={`absolute right-3 top-1/2 -translate-y-1/2 z-35 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-black/5 hover:bg-black/20 text-gray-400 hover:text-amber-500 hover:scale-105 active:scale-95 ${
-            isDark ? 'border border-slate-800' : 'border border-stone-200 shadow-xs bg-white/50'
+            isDark ? 'border border-slate-800' : 'border border-[#dacdb9]/60 shadow-xs bg-[#fdfbf6]/55'
           }`}
           title="下一首音轨"
         >
@@ -981,8 +989,8 @@ export default function MeditationPlayer({
               isLossless
                 ? isDark
                   ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow shadow-amber-500/10'
-                  : 'bg-amber-100 text-amber-700 border border-amber-300 shadow-sm'
-                : isDark ? 'bg-slate-950 text-gray-500 border border-slate-800' : 'bg-stone-100 text-stone-400 border border-stone-200'
+                  : 'bg-[#a67c52]/10 text-[#a67c52] border border-[#a67c52]/30 shadow-sm'
+                : isDark ? 'bg-slate-950 text-gray-500 border border-slate-800' : 'bg-[#f5ead5] text-[#826e5e] border border-[#dacdb9]'
             }`}
           >
             FLAC 高拟真
@@ -992,12 +1000,12 @@ export default function MeditationPlayer({
         {/* Current title info */}
         <div className="relative text-center z-10 select-none px-11">
           <h2 className={`text-sm font-black tracking-wide font-sans truncate ${
-            isDark ? 'text-gray-100' : 'text-stone-850'
+            isDark ? 'text-gray-100' : 'text-[#4e3629]'
           }`}>
             {activeTrack.title}
           </h2>
           <p className={`text-[10.5px] font-sans mt-0.5 leading-relaxed truncate ${
-            isDark ? 'text-gray-400' : 'text-stone-500'
+            isDark ? 'text-gray-400' : 'text-[#826e5e]'
           }`}>
             {activeTrack.desc}
           </p>
@@ -1016,7 +1024,7 @@ export default function MeditationPlayer({
 
       {/* 3. PROFESSIONAL SLEEP TIMER WIDGET */}
       <div className={`p-4 rounded-2xl border transition-all ${
-        isDark ? 'bg-slate-950/60 border-slate-900 shadow-inner' : 'bg-white border-stone-200/80 shadow-sm'
+        isDark ? 'bg-slate-950/60 border-slate-900 shadow-inner' : 'bg-[#fdfbf6]/60 border-[#dacdb9]/80 shadow-sm'
       }`} id="sleep_timer_box">
         <div className="flex justify-between items-center mb-1.5 font-sans">
           <span className={`text-[11px] font-extrabold flex items-center gap-1.5 ${
@@ -1059,7 +1067,7 @@ export default function MeditationPlayer({
                       : 'bg-[#a67c52]/10 border-[#a67c52]/40 text-[#a67c52] font-extrabold'
                     : isDark
                       ? 'bg-slate-900/30 border-slate-800 text-gray-400 hover:text-gray-200'
-                      : 'bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100'
+                      : 'bg-[#faf6ed]/60 border-[#dacdb9]/65 text-stone-700 hover:bg-[#f5ead5]'
                 }`}
               >
                 {opt.label}
@@ -1071,7 +1079,7 @@ export default function MeditationPlayer({
 
       {/* 4. ADVANCED ACOUSTIC MIX CONTROLLER SCREEN */}
       <div className={`p-4 rounded-2xl border transition-all ${
-        isDark ? 'bg-slate-950/60 border-slate-900 shadow-inner' : 'bg-white border-stone-200/80 shadow-sm'
+        isDark ? 'bg-slate-950/60 border-slate-900 shadow-inner' : 'bg-[#fdfbf6]/60 border-[#dacdb9]/80 shadow-sm'
       }`} id="acoustic_environment_toggles_panel">
         <div className="flex justify-between items-center mb-2.5 font-sans">
           <span className={`text-[11px] font-extrabold flex items-center gap-1.5 ${
@@ -1086,7 +1094,7 @@ export default function MeditationPlayer({
           <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850/20 transition-all select-none">
             <div className="flex items-center justify-between">
               <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
-                <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
+                <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-[#4e3629]'}`}>
                   能量共鸣
                 </span>
               </div>
@@ -1128,7 +1136,7 @@ export default function MeditationPlayer({
           <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850/20 transition-all select-none">
             <div className="flex items-center justify-between">
               <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
-                <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
+                <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-[#4e3629]'}`}>
                   环境音
                 </span>
               </div>
@@ -1227,15 +1235,15 @@ export default function MeditationPlayer({
               className={`w-full max-w-sm rounded-2xl p-5 shadow-2xl relative border flex flex-col max-h-[80vh] ${
                 isDark 
                   ? 'bg-[#0f172a] border-slate-800 text-gray-100' 
-                  : 'bg-white border-stone-250 text-stone-900'
+                  : 'bg-[#fdfbf6] border-[#dacdb9] text-[#4e3629]'
               }`}
             >
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-1.5">
-                  <Music className="w-4 h-4 text-sky-500 animate-pulse" />
-                  <h3 className="text-sm font-extrabold font-sans">
-                    {selectedCategory === 'sleep' ? '安眠曲库' : selectedCategory === 'focus' ? '专注曲库' : selectedCategory === 'rest' ? '静心曲库' : selectedCategory === 'energy' ? '提神曲库' : '五音健康曲库'}
-                  </h3>
+                   <Music className="w-4 h-4 text-sky-500 animate-pulse" />
+                   <h3 className="text-sm font-extrabold font-sans">
+                     {selectedCategory === 'sleep' ? '安眠曲库' : selectedCategory === 'focus' ? '专注曲库' : selectedCategory === 'rest' ? '静心曲库' : selectedCategory === 'energy' ? '提神曲库' : '五音健康曲库'}
+                   </h3>
                 </div>
                 <button
                   onClick={() => {
@@ -1243,7 +1251,7 @@ export default function MeditationPlayer({
                     setLibraryFilterText('');
                   }}
                   className={`p-1.5 rounded-full cursor-pointer transition-colors ${
-                    isDark ? 'hover:bg-slate-800 text-gray-400' : 'hover:bg-stone-100 text-stone-550'
+                    isDark ? 'hover:bg-slate-800 text-gray-400' : 'hover:bg-[#f5ead5] text-[#826e5e]'
                   }`}
                 >
                   <X className="w-4 h-4" />
@@ -1303,14 +1311,14 @@ export default function MeditationPlayer({
                               : 'border-[#a67c52] bg-[#a67c52]/10 text-[#a67c52] font-bold'
                             : isDark 
                               ? 'border-slate-800 bg-slate-900/30 hover:bg-slate-900/70 text-gray-300' 
-                              : 'border-stone-200 bg-stone-50/50 hover:bg-stone-100/50 text-stone-850'
+                              : 'border-[#dacdb9]/55 bg-[#faf6ed]/50 hover:bg-[#f5ead5]/70 text-[#4e3629]'
                         }`}
                       >
                         <div className="flex justify-between items-center mb-1">
                           <span className={`text-[11.5px] font-extrabold truncate ${
                             selectedCategory === track.purpose && sliderLevel === (subIdx + 1)
                               ? 'text-amber-500' 
-                              : isDark ? 'text-gray-200' : 'text-stone-850'
+                              : isDark ? 'text-gray-200' : 'text-[#4e3629]'
                           }`}>
                             {track.title}
                           </span>
@@ -1330,7 +1338,7 @@ export default function MeditationPlayer({
                           </div>
                         </div>
                         <p className={`text-[10px] leading-relaxed line-clamp-2 ${
-                          isDark ? 'text-gray-500' : 'text-stone-500'
+                          isDark ? 'text-gray-500' : 'text-[#826e5e]'
                         }`}>
                           {track.desc}
                         </p>
