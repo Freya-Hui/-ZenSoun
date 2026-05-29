@@ -76,6 +76,13 @@ export default function MeditationPlayer({
   const [showFullLibraryModal, setShowFullLibraryModal] = useState(false);
   const [libraryFilterText, setLibraryFilterText] = useState('');
   
+  // Dynamic reactive tracks storage
+  const [tracks, setTracks] = useState<Record<'sleep' | 'focus' | 'rest' | 'energy' | 'wuyin', Track[]>>(tracksData);
+  
+  // Advanced Acoustic controls to solve background line noise (hum and static hiss)
+  const [enableBrainwave, setEnableBrainwave] = useState<boolean>(true);
+  const [enableAmbientMix, setEnableAmbientMix] = useState<boolean>(true);
+
   // Elegant fading symbol overlay state on top of player panel
   const [fadingSymbol, setFadingSymbol] = useState<{ type: 'play' | 'pause'; id: number } | null>(null);
   const fadeCountRef = useRef(0);
@@ -161,7 +168,10 @@ export default function MeditationPlayer({
         if (data && data.length > 0) {
           const mapped = data.map(mapDbTrackToTrack);
           if (active) {
-            tracksData[selectedCategory] = mapped;
+            setTracks(prev => ({
+              ...prev,
+              [selectedCategory]: mapped
+            }));
             setPlaylistVersion(v => v + 1); // Triggers component state update safely
           }
         }
@@ -216,7 +226,7 @@ export default function MeditationPlayer({
   };
 
   // Compute active track based on category and level slider
-  const categoryTracks = tracksData[selectedCategory];
+  const categoryTracks = tracks[selectedCategory];
   const activeTrack = categoryTracks[sliderLevel - 1] || categoryTracks[0];
 
   const progressTimerRef = useRef<any>(null);
@@ -385,7 +395,12 @@ export default function MeditationPlayer({
   useEffect(() => {
     if (isPlaying) {
       // 1. Play central solfeggio healing beat in background programmatically
-      audioEngine.updateBrainwave(activeTrack.purpose, 0.4);
+      if (enableBrainwave) {
+        audioEngine.updateBrainwave(activeTrack.purpose, 0.4);
+      } else {
+        audioEngine.stopBrainwave();
+      }
+      
       if (!activeTrack.audioUrl) {
         audioEngine.playMelody(activeTrack.audioKeyword, 2400);
       }
@@ -445,11 +460,11 @@ export default function MeditationPlayer({
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     };
-  }, [isPlaying, activeTrack, isPremiumUser]);
+  }, [isPlaying, activeTrack, isPremiumUser, enableBrainwave, isLooping]);
 
   // Trigger ambient background noises automatically on music play based on target purpose and user subscription tier
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && enableAmbientMix) {
       if (activeTrack.purpose === 'sleep') {
         if (isPremiumUser) {
           audioEngine.setNoiseVolume('waves', true, 55);
@@ -484,8 +499,14 @@ export default function MeditationPlayer({
           audioEngine.setNoiseVolume('rain', true, 15);
         }
       }
+    } else {
+      // Direct physical muting of synthetic weather channels if ambient mix option is unchecked
+      audioEngine.setNoiseVolume('waves', false, 0);
+      audioEngine.setNoiseVolume('rain', false, 0);
+      audioEngine.setNoiseVolume('wind', false, 0);
+      audioEngine.setNoiseVolume('campfire', false, 0);
     }
-  }, [isPlaying, activeTrack, isPremiumUser]);
+  }, [isPlaying, activeTrack, isPremiumUser, enableAmbientMix]);
 
   const handlePlayPause = () => {
     audioEngine.ensureContext();
@@ -1003,6 +1024,67 @@ export default function MeditationPlayer({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* 4. ADVANCED ACOUSTIC MIX CONTROLLER SCREEN */}
+      <div className={`p-4 rounded-2xl border transition-all ${
+        isDark ? 'bg-slate-950/60 border-slate-900 shadow-inner' : 'bg-white border-stone-200/80 shadow-sm'
+      }`} id="acoustic_environment_toggles_panel">
+        <div className="flex justify-between items-center mb-2.5 font-sans">
+          <span className={`text-[11px] font-extrabold flex items-center gap-1.5 ${
+            isDark ? 'text-amber-400' : 'text-amber-700'
+          }`}>
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-spin" /> 耳腔低噪与声学深度调节 (释疑)
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2.5 text-sans">
+          {/* Toggle Brainwave beats drone hum */}
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850 transition-all select-none">
+            <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
+              <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
+                左右声道脑波共鸣 (Binaural Beats)
+              </span>
+              <span className="text-[9px] text-gray-500 font-sans leading-tight">
+                低频双耳脉冲物理共鸣，感觉像深沉的耳鸣或微风长鸣气流音 (Binaural Hum)
+              </span>
+            </div>
+            
+            <button
+              onClick={() => setEnableBrainwave(!enableBrainwave)}
+              className={`w-9 h-5 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
+                enableBrainwave ? 'bg-amber-500' : 'bg-slate-300/35'
+              }`}
+            >
+              <div className={`h-4 w-4 rounded-full bg-white transition-all shadow-sm transform duration-300 ${
+                enableBrainwave ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          {/* Toggle Automatic Ambient Nature Noises */}
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850 transition-all select-none">
+            <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
+              <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
+                智能天气环境背景音混入 (Auto Ambient Mix)
+              </span>
+              <span className="text-[9px] text-gray-500 font-sans leading-tight">
+                播放时伴随叠加海浪、春雨微风等粉红/白噪音天气层，类似沙沙的背景底噪
+              </span>
+            </div>
+            
+            <button
+              onClick={() => setEnableAmbientMix(!enableAmbientMix)}
+              className={`w-9 h-5 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
+                enableAmbientMix ? 'bg-amber-500' : 'bg-slate-300/35'
+              }`}
+            >
+              <div className={`h-4 w-4 rounded-full bg-white transition-all shadow-sm transform duration-350 ${
+                enableAmbientMix ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
         </div>
       </div>
 
