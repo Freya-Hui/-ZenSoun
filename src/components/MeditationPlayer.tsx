@@ -32,12 +32,12 @@ class LocalBinauralGenerator {
     }
   }
 
-  start(offsetFreq: number) {
+  start(offsetFreq: number, value: number = 0.5) {
     this.init();
     if (!this.ctx || !this.masterGain) return;
 
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      try { this.ctx.resume(); } catch (e) {}
     }
 
     this.stop(); // Stop any active nodes first before instantiating new ones
@@ -58,11 +58,15 @@ class LocalBinauralGenerator {
 
     const baseCarrier = 200; // Left ear base low frequency
     this.oscL.frequency.setValueAtTime(baseCarrier, this.ctx.currentTime);
-    this.oscR.frequency.setValueAtTime(baseCarrier + offsetFreq, this.ctx.currentTime);
+    this.oscR.frequency.setValueAtTime(baseCarrier + (offsetFreq * value), this.ctx.currentTime);
 
     // Initial output gains
     this.gainL.gain.setValueAtTime(0.5, this.ctx.currentTime);
     this.gainR.gain.setValueAtTime(0.5, this.ctx.currentTime);
+
+    // The brainwave tone GainNode (masterGain) scales with slider value from 0 to peak state (e.g. 0.06 max)
+    const targetGain = 0.06 * value;
+    this.masterGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
 
     // Connecting Left ear channel
     this.oscL.connect(this.gainL);
@@ -78,7 +82,33 @@ class LocalBinauralGenerator {
     this.oscL.start();
     this.oscR.start();
 
-    console.log(`[Binaural Wave Base Engine] Activated: Left Channel = ${baseCarrier}Hz, Right Channel = ${baseCarrier + offsetFreq}Hz.`);
+    console.log(`[Binaural Wave Base Engine] Activated: Left Channel = ${baseCarrier}Hz, Right Channel = ${(baseCarrier + offsetFreq * value).toFixed(2)}Hz (Diff = ${(offsetFreq * value).toFixed(2)}Hz), Gain = ${targetGain}`);
+  }
+
+  update(offsetFreq: number, value: number) {
+    this.init();
+    if (!this.ctx) return;
+
+    if (this.ctx.state === 'suspended') {
+      try { this.ctx.resume(); } catch (e) {}
+    }
+
+    const baseCarrier = 200;
+    const targetRightFreq = baseCarrier + (offsetFreq * value);
+    const targetGain = 0.06 * value;
+
+    if (this.oscL && this.oscR && this.masterGain && this.gainL && this.gainR) {
+      try {
+        this.oscL.frequency.setTargetAtTime(baseCarrier, this.ctx.currentTime, 0.1);
+        this.oscR.frequency.setTargetAtTime(targetRightFreq, this.ctx.currentTime, 0.1);
+        this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.15);
+        console.log(`[Binaural Wave Base Engine] Adaptive Adjust: L=${baseCarrier}Hz, R=${targetRightFreq.toFixed(2)}Hz (Diff=${(offsetFreq*value).toFixed(2)}Hz), Gain=${targetGain.toFixed(4)}`);
+      } catch (e) {
+        this.start(offsetFreq, value);
+      }
+    } else {
+      this.start(offsetFreq, value);
+    }
   }
 
   stop() {
@@ -237,7 +267,7 @@ export default function MeditationPlayer({
     return {
       id: dbTrack.id?.toString() || Math.random().toString(),
       title: dbTrack.title || '无标题音轨',
-      desc: dbTrack.description || dbTrack.desc || '暂无描述',
+      desc: dbTrack.subtitle || dbTrack.description || dbTrack.desc || '暂无描述',
       duration: dbTrack.duration ? Number(dbTrack.duration) : 300,
       purpose: selectedCategory,
       isPremium: dbTrack.is_premium ?? dbTrack.isPremium ?? false,
@@ -368,7 +398,7 @@ export default function MeditationPlayer({
   const categoryTracks = tracks[selectedCategory];
   const activeTrack = categoryTracks[sliderLevel - 1] || categoryTracks[0];
 
-  // Dynamically start, update and stop component-level binaural beats on state change (Step 3 Base)
+  // Dynamically start, update and stop component-level binaural beats on state change (Step 4 Slider Golden Formula Binding)
   useEffect(() => {
     if (!binauralGeneratorRef.current) {
       binauralGeneratorRef.current = new LocalBinauralGenerator();
@@ -376,16 +406,21 @@ export default function MeditationPlayer({
     const generator = binauralGeneratorRef.current;
 
     if (isPlaying && enableBrainwave) {
-      // Dynamic frequency shifting according to brain wave state goals (Delta, Theta, Alpha, Beta, Gamma)
-      let offset = 6.0; // Dynamic frequency offset based on selected theme/purpose (Theta default)
-      if (activeTrack) {
-        if (activeTrack.purpose === 'sleep') offset = 3.0;      // Delta for deep sleep restoration (3 Hz)
-        else if (activeTrack.purpose === 'focus') offset = 14.0; // Beta for analytical focus (14 Hz)
-        else if (activeTrack.purpose === 'rest') offset = 10.0;  // Alpha for relaxed awareness (10 Hz)
-        else if (activeTrack.purpose === 'energy') offset = 30.0;// Gamma for peak mental activity (30 Hz)
-        else if (activeTrack.purpose === 'wuyin') offset = 6.0;  // Theta for meditative healing & sub-conscious (6 Hz)
-      }
-      generator.start(offset);
+      // 1. Determine target base freq offset based on database category slug
+      const slug = getQuerySlug(selectedCategory);
+      let targetOffset = 6.0; // default theta
+      if (slug === 'sleep') targetOffset = 2.5;       // Delta wave (2.5 Hz)
+      else if (slug === 'focus') targetOffset = 10.0;  // Alpha wave (10.0 Hz)
+      else if (slug === 'zen') targetOffset = 6.0;     // Theta wave (6.0 Hz)
+      else if (slug === 'wake') targetOffset = 15.0;   // Beta wave (15.0 Hz)
+      else if (slug === 'ancient') targetOffset = 8.0; // Schumann Resonance (8.0 Hz)
+
+      // 2. Compute slider relative value (value parameter from 0.0 to 1.0)
+      const maxL = categoryTracks.length > 0 ? categoryTracks.length : (selectedCategory === 'wuyin' ? 5 : 3);
+      const value = maxL > 1 ? (sliderLevel - 1) / (maxL - 1) : 1.0;
+
+      // 3. Update the left and right Web Audio oscillators automatically
+      generator.update(targetOffset, value);
     } else {
       generator.stop();
     }
@@ -393,7 +428,7 @@ export default function MeditationPlayer({
     return () => {
       generator.stop();
     };
-  }, [isPlaying, enableBrainwave, activeTrack?.id, activeTrack?.purpose]);
+  }, [isPlaying, enableBrainwave, selectedCategory, sliderLevel, categoryTracks]);
 
   const progressTimerRef = useRef<any>(null);
   const countdownTimerRef = useRef<any>(null);
