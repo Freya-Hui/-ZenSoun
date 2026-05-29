@@ -84,15 +84,26 @@ class LocalBinauralGenerator {
   stop() {
     if (this.oscL) {
       try { this.oscL.stop(); } catch (e) {}
+      try { this.oscL.disconnect(); } catch (e) {}
       this.oscL = null;
     }
     if (this.oscR) {
       try { this.oscR.stop(); } catch (e) {}
+      try { this.oscR.disconnect(); } catch (e) {}
       this.oscR = null;
     }
-    this.gainL = null;
-    this.gainR = null;
-    this.merger = null;
+    if (this.gainL) {
+      try { this.gainL.disconnect(); } catch (e) {}
+      this.gainL = null;
+    }
+    if (this.gainR) {
+      try { this.gainR.disconnect(); } catch (e) {}
+      this.gainR = null;
+    }
+    if (this.merger) {
+      try { this.merger.disconnect(); } catch (e) {}
+      this.merger = null;
+    }
   }
 }
 
@@ -196,25 +207,6 @@ export default function MeditationPlayer({
   // Native components-level binaural beats generator reference
   const binauralGeneratorRef = useRef<LocalBinauralGenerator | null>(null);
 
-  // Dynamically start, update and stop component-level binaural beats on state change (Step 3 Base)
-  useEffect(() => {
-    if (!binauralGeneratorRef.current) {
-      binauralGeneratorRef.current = new LocalBinauralGenerator();
-    }
-    const generator = binauralGeneratorRef.current;
-
-    if (isPlaying && enableBrainwave) {
-      // Start with a standard therapeutic Theta wave offset (e.g. 6.0Hz) for physical resonance
-      generator.start(6.0);
-    } else {
-      generator.stop();
-    }
-
-    return () => {
-      generator.stop();
-    };
-  }, [isPlaying, enableBrainwave]);
-
   // Helper mappings between frontend category UI key and DB slug format
   const getQuerySlug = (cat: string): string => {
     const map: Record<string, string> = {
@@ -255,7 +247,7 @@ export default function MeditationPlayer({
     };
   };
 
-  // 2. 编写一个 useEffect 监听当前选中的分类导航 (category_slug)
+  // 2. 编写一个 useEffect 监听当前选中的分类导航 (category_slug) 并执行两表外键联合查询
   useEffect(() => {
     let active = true;
     const fetchTracksFromSupabase = async () => {
@@ -266,19 +258,53 @@ export default function MeditationPlayer({
       }
       try {
         const currentSlug = getQuerySlug(selectedCategory);
-        // 3. 当用户切换分类时执行
-        const { data, error } = await supabase
-          .from('music_tracks')
-          .select('*')
-          .eq('category_slug', currentSlug)
-          .order('sort_order', { ascending: true });
+        
+        let data: any[] | null = null;
+        let error: any = null;
+
+        // 【1. 编写两表联合查询】：使用 categories!inner(*) 关联，用 categories.slug 过滤 music 数据
+        console.log(`[Supabase Dynamic Fetch] Querying 'music' joined with 'categories' for slug '${currentSlug}'`);
+        const joinResult = await supabase
+          .from('music')
+          .select('*, categories!inner(*)')
+          .eq('categories.slug', currentSlug);
+
+        if (!joinResult.error && joinResult.data) {
+          data = joinResult.data;
+        } else {
+          console.warn('[Supabase Dynamic Fetch] Joined association query failed, running legendary 2-step fallback:', joinResult.error?.message);
+          
+          // 2-step fallback if relational keys are custom
+          const catResult = await supabase
+            .from('categories')
+            .select('*')
+            .eq('slug', currentSlug)
+            .maybeSingle();
+
+          if (catResult.data && !catResult.error) {
+            const categoryId = catResult.data.id;
+            const musicResult = await supabase
+              .from('music')
+              .select('*')
+              .eq('category_id', categoryId);
+            
+            if (!musicResult.error && musicResult.data) {
+              data = musicResult.data;
+            } else {
+              error = musicResult.error;
+            }
+          } else {
+            error = catResult.error || new Error(`Category slug '${currentSlug}' not found in categories table.`);
+          }
+        }
 
         if (error) {
-          console.error('Error fetching tracks from Supabase limit/credentials:', error.message);
+          console.error('Error fetching tracks from Supabase database:', error.message);
           return;
         }
 
         if (data && data.length > 0) {
+          // 【2. 对齐前端字段】：歌曲名字渲染 music.title，歌曲描述渲染 music.subtitle
           const mapped = data.map(mapDbTrackToTrack);
           if (active) {
             setTracks(prev => ({
@@ -341,6 +367,33 @@ export default function MeditationPlayer({
   // Compute active track based on category and level slider
   const categoryTracks = tracks[selectedCategory];
   const activeTrack = categoryTracks[sliderLevel - 1] || categoryTracks[0];
+
+  // Dynamically start, update and stop component-level binaural beats on state change (Step 3 Base)
+  useEffect(() => {
+    if (!binauralGeneratorRef.current) {
+      binauralGeneratorRef.current = new LocalBinauralGenerator();
+    }
+    const generator = binauralGeneratorRef.current;
+
+    if (isPlaying && enableBrainwave) {
+      // Dynamic frequency shifting according to brain wave state goals (Delta, Theta, Alpha, Beta, Gamma)
+      let offset = 6.0; // Dynamic frequency offset based on selected theme/purpose (Theta default)
+      if (activeTrack) {
+        if (activeTrack.purpose === 'sleep') offset = 3.0;      // Delta for deep sleep restoration (3 Hz)
+        else if (activeTrack.purpose === 'focus') offset = 14.0; // Beta for analytical focus (14 Hz)
+        else if (activeTrack.purpose === 'rest') offset = 10.0;  // Alpha for relaxed awareness (10 Hz)
+        else if (activeTrack.purpose === 'energy') offset = 30.0;// Gamma for peak mental activity (30 Hz)
+        else if (activeTrack.purpose === 'wuyin') offset = 6.0;  // Theta for meditative healing & sub-conscious (6 Hz)
+      }
+      generator.start(offset);
+    } else {
+      generator.stop();
+    }
+
+    return () => {
+      generator.stop();
+    };
+  }, [isPlaying, enableBrainwave, activeTrack?.id, activeTrack?.purpose]);
 
   const progressTimerRef = useRef<any>(null);
   const countdownTimerRef = useRef<any>(null);
