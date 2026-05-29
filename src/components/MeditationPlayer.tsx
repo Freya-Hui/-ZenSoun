@@ -264,12 +264,29 @@ export default function MeditationPlayer({
   };
 
   const mapDbTrackToTrack = (dbTrack: any): Track => {
+    // purpose 字段严格读取 dbTrack.category_slug
+    const dbSlug = dbTrack.category_slug || dbTrack.categorySlug || getQuerySlug(selectedCategory);
+    const mappedPurpose = getFrontendPurpose(dbSlug);
+
+    // desc 字段严格读取 dbTrack.subtitle（如果不存在再读 description），彻底消灭“暂无描述”
+    let descriptionText = dbTrack.subtitle || dbTrack.description || dbTrack.desc;
+    if (!descriptionText || descriptionText === '暂无描述') {
+      const fallbacks: Record<string, string> = {
+        sleep: '自适应舒缓双耳搏动脑波，温和协调深夜张力，引领安详寂静长眠。',
+        focus: '纯正恒定高能声波流，滤除环境纷杂波动，拉升多感官专注心流。',
+        rest: '传统乐磬微振鸣响，深层放空心气压力，自流导回虚怀澄澈境界。',
+        energy: '高能上行气机律动，激活肢体朝气机能，重塑精妙生命动力。',
+        wuyin: '经典五音古方疗法，深度调和脏腑能量运行，静心安神安魂。'
+      };
+      descriptionText = fallbacks[mappedPurpose] || '多声道立体共振，自适应调节声能，引导情绪归于和谐宁静。';
+    }
+
     return {
       id: dbTrack.id?.toString() || Math.random().toString(),
       title: dbTrack.title || '无标题音轨',
-      desc: dbTrack.subtitle || dbTrack.description || dbTrack.desc || '暂无描述',
+      desc: descriptionText,
       duration: dbTrack.duration ? Number(dbTrack.duration) : 300,
-      purpose: selectedCategory,
+      purpose: mappedPurpose,
       isPremium: dbTrack.is_premium ?? dbTrack.isPremium ?? false,
       intensityLabel: dbTrack.intensity_label || dbTrack.intensityLabel || '缓流 (1级)',
       audioKeyword: dbTrack.audio_keyword || dbTrack.audioKeyword || 'bowl',
@@ -277,7 +294,7 @@ export default function MeditationPlayer({
     };
   };
 
-  // 2. 编写一个 useEffect 监听当前选中的分类导航 (category_slug) 并执行两表外键联合查询（带有多级容错降级系统）
+  // 2. 编写一个 useEffect 监听当前选中的分类导航 (category_slug) 并执行最强壮的单表精准查询
   useEffect(() => {
     let active = true;
     const fetchTracksFromSupabase = async () => {
@@ -288,108 +305,20 @@ export default function MeditationPlayer({
       }
       try {
         const currentSlug = getQuerySlug(selectedCategory);
-        let data: any[] | null = null;
-        let finalError: any = null;
+        console.log(`[Supabase Precision Fetch] Querying 'music_tracks' directly for category_slug '${currentSlug}'`);
 
-        console.log(`[Supabase Dynamic Fetch] Initiating multi-tier fetch for slug '${currentSlug}'`);
+        // We query the music_tracks table directly, which is the verified table name in Supabase
+        const { data, error } = await supabase
+          .from('music_tracks')
+          .select('*')
+          .eq('category_slug', currentSlug)
+          .order('sort_order', { ascending: true });
 
-        // Tier 1: Two-table joint query (categories joined with music via foreign key)
-        try {
-          const joinResult = await supabase
-            .from('music')
-            .select('*, categories!inner(*)')
-            .eq('categories.slug', currentSlug);
-
-          if (!joinResult.error && joinResult.data && joinResult.data.length > 0) {
-            data = joinResult.data;
-            console.log(`[Supabase Dynamic Fetch] Tier 1 Joint-Query Success: Received ${data.length} tracks.`);
-          } else if (joinResult.error) {
-            console.warn('[Supabase Dynamic Fetch] Tier 1 Joint-Query Failed:', joinResult.error.message);
-          }
-        } catch (e: any) {
-          console.warn('[Supabase Dynamic Fetch] Tier 1 Joint-Query Exception:', e.message || e);
+        if (error) {
+          console.error('[Supabase Precision Fetch] Failed to fetch tracks:', error.message);
+          return;
         }
 
-        // Tier 2: 2-step queries (lookup category_id then query matching music records)
-        if (!data || data.length === 0) {
-          try {
-            console.log('[Supabase Dynamic Fetch] Trying Tier 2 Fallback: 2-step single table association...');
-            const catResult = await supabase
-              .from('categories')
-              .select('*')
-              .eq('slug', currentSlug)
-              .maybeSingle();
-
-            if (catResult.data && !catResult.error) {
-              const categoryId = catResult.data.id;
-              const musicResult = await supabase
-                .from('music')
-                .select('*')
-                .eq('category_id', categoryId);
-              
-              if (!musicResult.error && musicResult.data && musicResult.data.length > 0) {
-                data = musicResult.data;
-                console.log(`[Supabase Dynamic Fetch] Tier 2 Fallback Success: Found ${data.length} tracks.`);
-              } else if (musicResult.error) {
-                console.warn('[Supabase Dynamic Fetch] Tier 2 music table query error:', musicResult.error.message);
-              }
-            } else if (catResult.error) {
-              console.warn('[Supabase Dynamic Fetch] Tier 2 categories table lookup error:', catResult.error.message);
-            }
-          } catch (e: any) {
-            console.warn('[Supabase Dynamic Fetch] Tier 2 Exception:', e.message || e);
-          }
-        }
-
-        // Tier 3: Query classic legacy single table 'music_tracks' directly (fully matches original config schema)
-        if (!data || data.length === 0) {
-          try {
-            console.log('[Supabase Dynamic Fetch] Trying Tier 3 Fallback: Querying classic "music_tracks" table directly...');
-            const tracksResult = await supabase
-              .from('music_tracks')
-              .select('*')
-              .eq('category_slug', currentSlug)
-              .order('sort_order', { ascending: true });
-
-            if (!tracksResult.error && tracksResult.data && tracksResult.data.length > 0) {
-              data = tracksResult.data;
-              console.log(`[Supabase Dynamic Fetch] Tier 3 Fallback Success: Found ${data.length} tracks from music_tracks.`);
-            } else if (tracksResult.error) {
-              console.warn('[Supabase Dynamic Fetch] Tier 3 query failed:', tracksResult.error.message);
-              finalError = tracksResult.error;
-            }
-          } catch (e: any) {
-            console.warn('[Supabase Dynamic Fetch] Tier 3 Exception:', e.message || e);
-          }
-        }
-
-        // Tier 4: Query "music" directly and filter on the client side based on matching fields (ultimate schema fallback)
-        if (!data || data.length === 0) {
-          try {
-            console.log('[Supabase Dynamic Fetch] Trying Tier 4 Fallback: Direct select on "music" with client filtering...');
-            const musicDirectResult = await supabase
-              .from('music')
-              .select('*');
-
-            if (!musicDirectResult.error && musicDirectResult.data && musicDirectResult.data.length > 0) {
-              const filtered = musicDirectResult.data.filter((item: any) => {
-                const itemSlug = (item.category_slug || item.category || item.slug || '').toLowerCase();
-                return itemSlug === currentSlug.toLowerCase() || itemSlug.includes(currentSlug.toLowerCase());
-              });
-              if (filtered.length > 0) {
-                data = filtered;
-                console.log(`[Supabase Dynamic Fetch] Tier 4 Fallback Success: Found ${data.length} matched tracks from music.`);
-              }
-            } else if (musicDirectResult.error) {
-              console.warn('[Supabase Dynamic Fetch] Tier 4 direct music query error:', musicDirectResult.error.message);
-              finalError = musicDirectResult.error || finalError;
-            }
-          } catch (e: any) {
-            console.warn('[Supabase Dynamic Fetch] Tier 4 Exception:', e.message || e);
-          }
-        }
-
-        // Apply and update local categories if records are successfully retrieved
         if (data && data.length > 0) {
           const mapped = data.map(mapDbTrackToTrack);
           if (active) {
@@ -398,10 +327,10 @@ export default function MeditationPlayer({
               [selectedCategory]: mapped
             }));
             setPlaylistVersion(v => v + 1); // Triggers component state update safely
-            console.log(`[Supabase Dynamic Fetch] Saved ${mapped.length} remote tracks into State for category '${selectedCategory}'.`);
+            console.log(`[Supabase Precision Fetch] Saved ${mapped.length} remote tracks into State for category '${selectedCategory}'.`);
           }
         } else {
-          console.warn('[Supabase Dynamic Fetch] No remote records loaded from the tiered query system for category:', selectedCategory, finalError?.message || '');
+          console.warn(`[Supabase Precision Fetch] No database records returned for category_slug '${currentSlug}'. Retaining preloaded tracks.`);
         }
       } catch (err) {
         console.error('Failed to pull custom playlist from Supabase:', err);
