@@ -5,6 +5,97 @@ import AudioVisualizer from './AudioVisualizer';
 import { audioEngine } from '../utils/audioEngine';
 import { getSupabase } from '../lib/supabase';
 
+// PHYSICAL BINAURAL BEATS BASE AUDIO MODEL (Web Audio Stereo Architecture)
+class LocalBinauralGenerator {
+  private ctx: AudioContext | null = null;
+  private oscL: OscillatorNode | null = null;
+  private oscR: OscillatorNode | null = null;
+  private gainL: GainNode | null = null;
+  private gainR: GainNode | null = null;
+  private merger: ChannelMergerNode | null = null;
+  private masterGain: GainNode | null = null;
+
+  init() {
+    if (this.ctx) return;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      this.ctx = new AudioContextClass();
+
+      // Final volume control
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.setValueAtTime(0.04, this.ctx.currentTime); // Soft background level
+
+      // Connect merger directly to the destination speaker/headphones output
+      this.masterGain.connect(this.ctx.destination);
+    } catch (e) {
+      console.error('Failed to initialize Web Audio Context for Left/Right Binaural Oscillations:', e);
+    }
+  }
+
+  start(offsetFreq: number) {
+    this.init();
+    if (!this.ctx || !this.masterGain) return;
+
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+
+    this.stop(); // Stop any active nodes first before instantiating new ones
+
+    // 1. Create twin independent oscillators
+    this.oscL = this.ctx.createOscillator();
+    this.oscR = this.ctx.createOscillator();
+
+    // 2. Create twin left/right gain controllers
+    this.gainL = this.ctx.createGain();
+    this.gainR = this.ctx.createGain();
+
+    // 3. Setup ChannelMerger to route left oscillator to left ear and right oscillator to right ear exclusively
+    this.merger = this.ctx.createChannelMerger(2);
+
+    this.oscL.type = 'sine';
+    this.oscR.type = 'sine';
+
+    const baseCarrier = 200; // Left ear base low frequency
+    this.oscL.frequency.setValueAtTime(baseCarrier, this.ctx.currentTime);
+    this.oscR.frequency.setValueAtTime(baseCarrier + offsetFreq, this.ctx.currentTime);
+
+    // Initial output gains
+    this.gainL.gain.setValueAtTime(0.5, this.ctx.currentTime);
+    this.gainR.gain.setValueAtTime(0.5, this.ctx.currentTime);
+
+    // Connecting Left ear channel
+    this.oscL.connect(this.gainL);
+    this.gainL.connect(this.merger, 0, 0); // Connect L gain output 0 to Merger input 0 (Left channel)
+
+    // Connecting Right ear channel
+    this.oscR.connect(this.gainR);
+    this.gainR.connect(this.merger, 0, 1); // Connect R gain output 0 to Merger input 1 (Right channel)
+
+    // Merger connects to physical final master volume gain
+    this.merger.connect(this.masterGain);
+
+    this.oscL.start();
+    this.oscR.start();
+
+    console.log(`[Binaural Wave Base Engine] Activated: Left Channel = ${baseCarrier}Hz, Right Channel = ${baseCarrier + offsetFreq}Hz.`);
+  }
+
+  stop() {
+    if (this.oscL) {
+      try { this.oscL.stop(); } catch (e) {}
+      this.oscL = null;
+    }
+    if (this.oscR) {
+      try { this.oscR.stop(); } catch (e) {}
+      this.oscR = null;
+    }
+    this.gainL = null;
+    this.gainR = null;
+    this.merger = null;
+  }
+}
+
 interface Track {
   id: string;
   title: string;
@@ -101,6 +192,28 @@ export default function MeditationPlayer({
   // Dynamic playlist versioning & HTML5 Audio element reference
   const [playlistVersion, setPlaylistVersion] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Native components-level binaural beats generator reference
+  const binauralGeneratorRef = useRef<LocalBinauralGenerator | null>(null);
+
+  // Dynamically start, update and stop component-level binaural beats on state change (Step 3 Base)
+  useEffect(() => {
+    if (!binauralGeneratorRef.current) {
+      binauralGeneratorRef.current = new LocalBinauralGenerator();
+    }
+    const generator = binauralGeneratorRef.current;
+
+    if (isPlaying && enableBrainwave) {
+      // Start with a standard therapeutic Theta wave offset (e.g. 6.0Hz) for physical resonance
+      generator.start(6.0);
+    } else {
+      generator.stop();
+    }
+
+    return () => {
+      generator.stop();
+    };
+  }, [isPlaying, enableBrainwave]);
 
   // Helper mappings between frontend category UI key and DB slug format
   const getQuerySlug = (cat: string): string => {
