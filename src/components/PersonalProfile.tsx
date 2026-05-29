@@ -184,7 +184,7 @@ export default function PersonalProfile({
     if (isDemo) {
       return {
         title: "静修前瞻：AI 生态情绪走势",
-        advice: "当前展示近七日情绪波动图谱。点击上方的「打开今日心灵记录面板」描述您最真实的感觉，系统后台会自动分析情绪走势，在情绪曲线中沉淀珍贵的心灵指引，辅助本端输出深度诊疗反馈。",
+        advice: "当前展示近七日情绪波动图谱。点击上方的「随笔日记」描述您最真实的感觉，系统后台会自动分析情绪走势，在情绪曲线中沉淀珍贵的心灵指引，辅助本端输出深度诊疗反馈。",
         badge: "预想中和"
       };
     }
@@ -258,7 +258,6 @@ export default function PersonalProfile({
   const [dynamicQuotes, setDynamicQuotes] = useState<string[]>(BOOK_QUOTES);
   const [diaryPrompts, setDiaryPrompts] = useState<string[]>([]);
   const [showMoodTrendsModal, setShowMoodTrendsModal] = useState(false);
-  const [trendTab, setTrendTab] = useState<'trends' | 'cloud'>('trends');
   const [recipeSubTab, setRecipeSubTab] = useState<'my_recipes' | 'fav_recipes' | 'melody_creation'>('my_recipes');
 
   useEffect(() => {
@@ -755,7 +754,7 @@ export default function PersonalProfile({
             <div className="flex-1 space-y-0.5">
               <p className="text-xs font-bold font-sans flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
-                修心之旅 • 尚未绑定
+                修行之旅 • 尚未绑定
               </p>
               <p className="text-[10px] leading-relaxed opacity-80">
                 当前为游客修持模式。注册或登录可自定义您的法号，并支持数据自动备份与精品配方发布。
@@ -855,22 +854,59 @@ export default function PersonalProfile({
           闭上眼，默念您的疑惑、委屈或感悟。翻开“答案之书”，或呼出“AI疗愈师”续笔并开方，舒缓您繁杂的身心状态。
         </p>
 
-        <button
-          onClick={() => {
-            setShowRecordModal(true);
-            setIsBookOpened(false);
-            setDiaryInput('');
-          }}
-          className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ring-offset-2 hover:opacity-90 active:scale-98 ${
-            isDark 
-              ? 'bg-gradient-to-r from-[#a67c52] to-amber-700 text-white shadow-lg shadow-amber-950/20' 
-              : 'bg-stone-900 text-white shadow-md shadow-stone-950/10'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          <span>打开今日心灵记录面板</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
+        <div className="grid grid-cols-2 gap-3 mt-1.5" id="mind_island_suboptions">
+          {/* Card A: Essay Diary */}
+          <button
+            onClick={() => {
+              setRecordType('diary');
+              setShowRecordModal(true);
+              setIsBookOpened(false);
+              setDiaryInput('');
+            }}
+            className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer hover:scale-102 active:scale-98 group ${
+              isDark 
+                ? 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-850 hover:border-amber-500/30' 
+                : 'bg-stone-50 border-stone-200 hover:bg-[#faf6ed] hover:border-[#a67c52]/30 shadow-xs'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className={`p-1.5 rounded-lg ${isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-[#a67c52]/10 text-[#a67c52]'}`}>
+                <Edit2 className="w-4 h-4" />
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-gray-400" />
+            </div>
+            <div>
+              <p className="text-[11.5px] font-extrabold tracking-wide">阅己 • 随笔日记</p>
+              <p className={`text-[9px] mt-0.5 leading-relaxed opacity-60 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>写写喜怒哀乐，由AI疗愈师辅助开方</p>
+            </div>
+          </button>
+
+          {/* Card B: Book of Answers */}
+          <button
+            onClick={() => {
+              setRecordType('tag');
+              setShowRecordModal(true);
+              setIsBookOpened(false);
+              setDiaryInput('');
+            }}
+            className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer hover:scale-102 active:scale-98 group ${
+              isDark 
+                ? 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-850 hover:border-amber-500/30' 
+                : 'bg-stone-50 border-stone-200 hover:bg-[#faf6ed] hover:border-[#a67c52]/30 shadow-xs'
+            }`}
+          >
+            <div className="flex items-center justify-between w-full mb-2">
+              <div className={`p-1.5 rounded-lg ${isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-[#a67c52]/10 text-[#a67c52]'}`}>
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-gray-400" />
+            </div>
+            <div>
+              <p className="text-[11.5px] font-extrabold tracking-wide">叩问 • 答案之书</p>
+              <p className={`text-[9px] mt-0.5 leading-relaxed opacity-60 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>默念心头疑惑，随机翻开深省箴言</p>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* 2.5 AI RESPONSE FLOATING PRESCRIPTION (STAYS AS CORR FEEDBACK) */}
@@ -1034,7 +1070,7 @@ export default function PersonalProfile({
                   {savedRecipes.filter(r => !r.isCustom).length === 0 ? (
                     <div className="py-8 text-center px-4">
                       <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
-                        暂无收藏配方。您可以去静修电台寻找其他修行师发布的环境设计。
+                        暂无收藏配方。您可以前往「发现/社区」发现并收藏其他静修同修分享的药膳古法秘方。
                       </p>
                     </div>
                   ) : (
@@ -1047,12 +1083,8 @@ export default function PersonalProfile({
                           }`}
                         >
                           <div className="pr-8 flex-1 min-w-0 text-left">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-extrabold text-[12px] text-[#8e6b46]">{recipe.name}</span>
-                              <span className={`text-[8.5px] px-1 rounded font-normal bg-orange-500/10 text-orange-600 border border-orange-500/20`}>
-                                by {recipe.creator}
-                              </span>
-                            </div>
+                            <span className="font-extrabold text-[12px] text-[#8e6b46]">{recipe.name}</span>
+                            <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500">{recipe.purposeLabel}</span>
                             <p className={`text-[9.5px] mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
                               {recipe.description}
                             </p>
@@ -1060,14 +1092,16 @@ export default function PersonalProfile({
 
                           <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                             <button
-                              onClick={() => onApplyRecipe(recipe)}
+                              onClick={() => {
+                                onApplyRecipe(recipe);
+                              }}
                               className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
                                 isDark
                                   ? 'bg-slate-950 hover:bg-slate-805 text-cyan-400 border border-slate-800'
                                   : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-sm'
                               }`}
                             >
-                              载入混配
+                              载入配方
                             </button>
                             
                             {onDeleteRecipe && (
@@ -1076,7 +1110,7 @@ export default function PersonalProfile({
                                 className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
                                   isDark ? 'text-slate-600' : 'text-stone-300'
                                 }`}
-                                title="从收藏名册中移除"
+                                title="取消收藏配方"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1092,10 +1126,10 @@ export default function PersonalProfile({
               {/* Sub-tab 3: Melody Creations */}
               {recipeSubTab === 'melody_creation' && (
                 <div className="space-y-2.5">
-                  {userCreations.length === 0 ? (
+                  {!userCreations || userCreations.length === 0 ? (
                     <div className="py-8 text-center px-4">
                       <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
-                        暂无自主琴谱编排首创。
+                        暂无旋律创作。您可以前往「声疗编钟/五音疗疾」栏目自由敲击编钟，录制专属舒缓音乐曲目。
                       </p>
                     </div>
                   ) : (
@@ -1108,31 +1142,26 @@ export default function PersonalProfile({
                           }`}
                         >
                           <div className="pr-8 flex-1 min-w-0 text-left">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-extrabold text-[12px] text-[#8e6b46]">{creation.name}</span>
-                              <span className={`text-[8.5px] px-1 rounded font-normal bg-amber-500/10 text-amber-605 border border-amber-500/20`}>
-                                {creation.instrumentLabel}
-                              </span>
-                            </div>
-                            <div className={`text-[9px] mt-1 space-x-2 font-mono flex items-center ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
-                              <span>共 {creation.barCount} 小节编轨</span>
-                              <span>•</span>
-                              <span>节点数: {creation.totalNotes} 点</span>
-                            </div>
-                            <span className="text-[7.5px] font-mono text-gray-400 block mt-1">保存时间: {creation.date}</span>
+                            <span className="font-extrabold text-[12px] text-[#8e6b46]">{creation.name}</span>
+                            <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-500 font-mono">{creation.instrumentLabel}</span>
+                            <p className={`text-[9.5px] mt-1 leading-relaxed ${isDark ? 'text-slate-500' : 'text-stone-500'}`}>
+                              小节数: {creation.barCount} | 包含音符: {creation.totalNotes} | 节奏: {creation.bpm} BPM | 创作时间: {creation.date}
+                            </p>
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                            <button
-                              onClick={() => onLoadCreation && onLoadCreation(creation)}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
-                                isDark
-                                  ? 'bg-slate-950 hover:bg-slate-850 text-emerald-400 border border-slate-800'
-                                  : 'bg-emerald-600 hover:bg-[#5aa370] text-white shadow-sm'
-                              }`}
-                            >
-                              打开创作版面
-                            </button>
+                            {onLoadCreation && (
+                              <button
+                                onClick={() => onLoadCreation(creation)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
+                                  isDark
+                                    ? 'bg-slate-950 hover:bg-slate-805 text-cyan-400 border border-slate-800'
+                                    : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-sm'
+                                }`}
+                              >
+                                载入创作
+                              </button>
+                            )}
                             
                             {onDeleteCreation && (
                               <button
@@ -1140,19 +1169,19 @@ export default function PersonalProfile({
                                 className={`p-1.5 rounded-lg hover:bg-rose-500/10 hover:text-rose-500 transition-colors ${
                                   isDark ? 'text-slate-600' : 'text-stone-300'
                                 }`}
-                                        title="永久删除曲谱档案"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                                title="永久删除曲谱档案"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* C. MY REFLECTION LOGS (DIARIES) */}
@@ -1160,11 +1189,11 @@ export default function PersonalProfile({
             <div className="space-y-4">
               {/* Sub-label heading for historic list */}
               <div className="flex items-center justify-between text-[10.5px] font-black px-1">
-                <span className="flex items-center gap-1 text-gray-505 font-sans">
+                <span className="flex items-center gap-1 font-sans">
                   <BookOpen className="w-3.5 h-3.5 text-sky-500" /> 历史反思日记名录 ({diaries.length})
                 </span>
                 <span className="text-[8.5px] text-gray-400 font-mono">
-                  AES-255 本地密存
+                  AES-256 本地密存
                 </span>
               </div>
 
@@ -1172,7 +1201,7 @@ export default function PersonalProfile({
               {diaries.length === 0 ? (
                 <div className="py-6 text-center px-4 border border-dashed rounded-xl border-gray-400/25">
                   <p className="text-[10px] text-gray-400 font-sans leading-relaxed">
-                    心灵净地尚无印记。点击上方的「打开今日心灵记录面板」写写您的喜怒哀意，系统随后会在此展示实存平滑情绪变化指数。
+                    心灵净地尚无印记。点击上方的「随笔日记」写写您的喜怒哀意，系统随后会在此展示实存平滑情绪变化指数。
                   </p>
                 </div>
               ) : (
@@ -1190,29 +1219,30 @@ export default function PersonalProfile({
                         <span className="flex items-center gap-1 font-mono">
                           <Calendar className="w-3 h-3" /> {diary.date}
                         </span>
-                        <span className={`px-1 rounded ${isDark ? 'bg-slate-900 text-sky-40 shrink-0' : 'bg-stone-200/60 text-stone-700 shrink-0'}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[8.5px] ${isDark ? 'bg-slate-900 text-amber-500 font-bold' : 'bg-stone-150 text-stone-700 font-bold'}`}>
                           感觉: {diary.mood}
                         </span>
                       </div>
-
-                      <p className="leading-relaxed text-[11px] text-justify">{diary.content}</p>
-
+                      <p className="leading-relaxed text-[11px] text-justify whitespace-pre-wrap">{diary.content}</p>
                       {diary.aiResponse && (
-                        <p className={`text-[10px] italic p-1.5 rounded mt-2 border-l-2 ${
-                          isDark 
-                            ? 'bg-sky-950/15 border-cyan-500/40 text-cyan-400' 
-                            : 'bg-sky-50 border-sky-300 text-sky-850'
+                        <div className={`mt-2 p-2 rounded-lg border text-[10px] leading-relaxed relative ${
+                          isDark ? 'bg-slate-900/40 border-slate-900 text-gray-400' : 'bg-stone-550/10 border-stone-100 text-stone-600'
                         }`}>
-                          导师赠言: {diary.aiResponse.feedback}
-                        </p>
+                          <p className="font-extrabold text-[#a67c52] dark:text-[#8e6b46] mb-0.5 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
+                            <span>导师赠言: {diary.aiResponse.feedback}</span>
+                          </p>
+                          {diary.aiResponse.suggestedRecipeName && (
+                            <p className="text-[9.5px] text-sky-500 dark:text-cyan-400 font-medium mt-0.5">
+                              推荐药膳配方: {diary.aiResponse.suggestedRecipeName}
+                            </p>
+                          )}
+                        </div>
                       )}
-                      
                       <button
                         onClick={() => onDeleteDiary(diary.id)}
-                        className={`absolute top-2 right-2 p-1 rounded hover:text-rose-500 transition-colors ${
-                          isDark ? 'text-slate-600' : 'text-stone-300'
-                        }`}
-                        title="删除此随心随笔"
+                        className="absolute right-2 top-2 p-1 rounded hover:bg-rose-500/10 hover:text-rose-500 text-gray-400 opacity-60 hover:opacity-100 transition-all cursor-pointer border-0 outline-none"
+                        title="删除日记"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -1223,166 +1253,125 @@ export default function PersonalProfile({
             </div>
           )}
         </div>
-
-        {/* 5. LOGOUT CONTROL BUTTON */}
-        {onLogOut && (
-          <div className="mt-4 pt-3 border-t border-dashed border-gray-500/10 flex justify-center">
-            <button
-              onClick={onLogOut}
-              className={`w-full py-2.5 text-xs font-bold rounded-xl border flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                isDark 
-                  ? 'bg-red-500/5 text-red-500 border-red-500/15 hover:bg-red-500/10' 
-                  : 'bg-red-50 text-red-700 border-red-200/50 hover:bg-red-100'
-              }`}
-            >
-              退出当前静修法号
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* SEVENTH-DAY MOOD TRENDS & DATABASE CLOUD CO-SYNC MODAL PANEL OVERLAY */}
+      {/* 3. SHOW MOOD TRENDS AND CLINICAL CLOUD SYNC DRAWER OVERLAY */}
       <AnimatePresence>
         {showMoodTrendsModal && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 70 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 180 }}
-            className={`fixed inset-0 z-[120] flex flex-col p-6 md:p-12 shadow-2xl overflow-y-auto ${
-              isDark ? 'bg-[#080d19] text-gray-200' : 'bg-[#fafaf7] text-stone-950'
-            }`}
-            id="trends_and_cloud_overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
           >
-            {/* Header toolbar */}
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-500/10 shrink-0">
-              <div className="flex items-center gap-1.5 text-amber-500">
-                <Activity className="w-4 h-4 text-rose-500 shrink-0 animate-pulse" />
-                <span className="text-[11.5px] font-black uppercase font-sans">情绪疗愈能量走势与云管道中心</span>
-              </div>
-              <button
-                onClick={() => {
-                  setShowMoodTrendsModal(false);
-                }}
-                className={`p-1 rounded-full cursor-pointer hover:bg-gray-500/15 transition-colors`}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Inner modal tabs switcher */}
-            <div className={`grid grid-cols-2 p-1 rounded-xl mb-4 text-xs font-bold grow-0 shrink-0 ${
-              isDark ? 'bg-slate-950/80 border border-slate-900' : 'bg-stone-200/50 border border-stone-200'
-            }`}>
-              <button
-                onClick={() => setTrendTab('trends')}
-                className={`py-1.5 rounded-lg text-[11px] cursor-pointer transition-all flex items-center justify-center gap-1 ${
-                  trendTab === 'trends'
-                    ? isDark ? 'bg-slate-900 border border-slate-800 text-amber-400' : 'bg-white border border-stone-300 text-stone-950 shadow-sm'
-                    : 'text-gray-400'
+            {showMoodTrendsModal && (
+              <motion.div
+                initial={{ scale: 0.95, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 15 }}
+                className={`w-full max-w-4xl rounded-3xl p-6 relative max-h-[90vh] overflow-y-auto text-left flex flex-col ${
+                  isDark ? 'bg-[#0f172a] border border-slate-905 text-gray-200' : 'bg-[#faf6ed] text-stone-900 shadow-2xl'
                 }`}
               >
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>七日情绪走势</span>
-              </button>
-              <button
-                onClick={() => setTrendTab('cloud')}
-                className={`py-1.5 rounded-lg text-[11px] cursor-pointer transition-all flex items-center justify-center gap-1 ${
-                  trendTab === 'cloud'
-                    ? isDark ? 'bg-slate-900 border border-slate-800 text-amber-400' : 'bg-white border border-stone-300 text-stone-950 shadow-sm'
-                    : 'text-gray-400'
-                }`}
-              >
-                <Cloud className="w-3.5 h-3.5" />
-                <span>Supabase 云语料同步</span>
-              </button>
-            </div>
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowMoodTrendsModal(false)}
+                  className="absolute right-4 top-4 p-1.5 rounded-full hover:bg-gray-500/10 cursor-pointer transition-colors border-0 outline-none"
+                  title="关闭"
+                >
+                  <X className="w-4 h-4" />
+                </button>
 
-            {/* TAB CONTENT 1: MOOD CURVE */}
-            {trendTab === 'trends' && (
-              <div className="flex-1 flex flex-col gap-4">
-                <div className={`p-4 rounded-2xl border ${
-                  isDark ? 'bg-slate-950/40 border-slate-900' : 'bg-white border-stone-200 shadow-sm'
-                }`}>
-                  <div className="mb-3">
-                    <h4 className="text-xs font-black">🌱 七日情绪电磁能量波段平滑曲线</h4>
-                    <p className="text-[10px] text-gray-400 mt-0.5">纵轴情绪值 (得分 0-100)，平稳且波动率低代表深度入禅</p>
+                <div className="flex items-center gap-2 mb-4 pb-1.5 border-b border-gray-500/10">
+                  <Activity className="w-5 h-5 text-rose-500 animate-pulse" />
+                  <h3 className="text-sm font-black uppercase font-sans tracking-wider font-extrabold text-[#8e6b46]">
+                    情绪能量波动图谱 & 云端同步控制中心
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Column 1: Recharts Mood Flow Chart */}
+                  <div className="space-y-4 font-sans">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                      <span className="flex items-center gap-1">
+                        <TrendingUp className="w-3.5 h-3.5 text-rose-500" />
+                        近七日心力场律振幅图谱
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold ${
+                        isDark ? 'bg-rose-500/10 text-rose-400' : 'bg-stone-200 text-stone-700'
+                      }`}>
+                        状态指标: ${trendFeedback.badge}
+                      </span>
+                    </div>
+
+                    <div className="h-44 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="gradientMoodArea" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25}/>
+                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#1e293b' : '#e2e8f0'} />
+                          <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} />
+                          <YAxis domain={[0, 10]} ticks={[0, 2, 4, 6, 8, 10]} stroke="#94a3b8" fontSize={9} />
+                          <Tooltip 
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const item = payload[0].payload;
+                                return (
+                                  <div className={`p-2.5 rounded-xl border text-[9.5px] font-sans ${isDark ? 'bg-slate-950 border-slate-900 text-gray-200' : 'bg-white border-stone-250 text-stone-900 shadow-md'}`}>
+                                    <p className="font-bold opacity-50 font-mono">${item.name}</p>
+                                    <p className="text-rose-500 font-extrabold mt-0.5 font-sans">情绪能量: ${payload[0].value} / 10</p>
+                                    <p className="text-[#a67c52] dark:text-cyan-400 font-bold font-sans">归属状态: ${item.mood} ${item.isReal ? '(实录)' : '(中和 baseline)'}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Area type="monotone" dataKey="情绪能量" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#gradientMoodArea)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* AI Feedback Clinical Diagnostic Card */}
+                    <div className={`p-3 rounded-xl border relative text-left ${
+                      isDark ? 'bg-slate-950/40 border-slate-900/60' : 'bg-white border-stone-200 shadow-sm'
+                    }`}>
+                      <span className="font-extrabold text-[11px] text-[#a67c52] dark:text-amber-500 flex items-center gap-1.5 mb-1">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                        ${trendFeedback.title}
+                      </span>
+                      <p className={`text-[10px] leading-relaxed text-justify ${isDark ? 'text-gray-400' : 'text-stone-600'}`}>
+                        ${trendFeedback.advice}
+                        {` 同时建议结合「声疗编钟/五音疗疾」的“徵音(火)”或“羽音(水)”混配设计，通过 528Hz 黄金频率促醒中枢神经，修补经络堵点。`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="h-[220px] w-full" id="recharts_trend_container">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={getMoodTrendData()} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#d97706" stopOpacity={0.25}/>
-                            <stop offset="95%" stopColor="#d97706" stopOpacity={0.0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#1e293b' : '#e2e8f0'} />
-                        <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
-                        <YAxis domain={[0, 100]} tickCount={6} tick={{ fontSize: 9 }} stroke="#94a3b8" />
-                        <Tooltip 
-                          contentStyle={{ 
-                            background: isDark ? '#020617' : '#ffffff', 
-                            borderColor: isDark ? '#1e293b' : '#e2e8f0',
-                            borderRadius: '8px',
-                            fontSize: '10.5px'
-                          }} 
+
+                  {/* Column 2: Clock Database Sync / Config Area */}
+                  <div className="space-y-4 font-sans text-xs">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                       <span className="flex items-center gap-1 text-emerald-500 font-bold">
+                         <Cloud className="w-3.5 h-3.5 shrink-0" />
+                         云备份储存与凭点设置 (Supabase)
+                       </span>
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={dbMode === 'supabase'}
+                          onChange={(e) => {
+                            setDbMode(e.target.checked ? 'supabase' : 'local');
+                            setSyncLogs(e.target.checked ? '云同步管道就绪。正在加载 Supabase schema 信息。' : '回退至本地沙盒，使用 localStorage 持久存储。');
+                          }}
                         />
-                        <Area type="monotone" dataKey="score" stroke="#d97706" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMood)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* AI Healing Suggestions recommendation sheet */}
-                <div className={`p-4 rounded-xl border ${
-                  isDark ? 'bg-amber-500/5 border-amber-500/20 text-amber-300/90' : 'bg-amber-50/50 border-amber-200 text-stone-850'
-                } text-[11px] leading-relaxed flex flex-col gap-2`}>
-                  <div className="flex items-center gap-1.5 text-amber-500">
-                    <Sparkles className="w-4 h-4 animate-pulse" />
-                    <span className="font-extrabold text-[11.5px]">AI 灵性愈疗处方反馈</span>
-                  </div>
-                  <p className="text-justify font-sans">
-                    诊断概要：您过去七天的身心共振指数表现平稳。
-                    {diaries.length === 0 
-                      ? ' 检测到您本地目前尚无随笔日记。建议您现在翻开「随随笔日签」，记录一次静心冥想的呼吸轨迹或内心杂念阻滞。通过书写泄墨心结，系统能够捕集更真实的血气经络趋势，并为您提供专属 AI 药膳乐律配方。' 
-                      : ' 根据您最近的心灵手札频段检测，情绪波动正逐步趋近对称和谐区。在心烦急躁时推荐进行「五音疗疾」的“徵音(火)”或“羽音(水)”混配设计，通过 528Hz 黄金频率促醒中枢神经，修补经络堵点。'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* TAB CONTENT 2: DATABASE CLOUD SYNC */}
-            {trendTab === 'cloud' && (
-              <div className="flex-1 flex flex-col gap-4">
-                <div className={`p-4 rounded-xl border ${
-                  isDark ? 'bg-slate-950/40 border-slate-900 text-gray-400' : 'bg-white border-stone-200'
-                }`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h4 className="text-xs font-black text-amber-500">🌌 数据主权与托管模式</h4>
-                      <p className="text-[10px] text-gray-400 mt-0.5">选择将日签、反思、自定义配方放入个人 Supabase 云账户</p>
+                        <div className="w-7 h-4 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                        <span className="ml-1 text-[8.5px] font-bold text-gray-400">网络同步</span>
+                      </label>
                     </div>
-                    {/* switcher */}
-                    <div className="flex items-center gap-1 p-0.5 rounded-lg bg-gray-500/10">
-                      <button
-                        onClick={() => setDbMode('local')}
-                        className={`px-2 py-1 text-[9px] font-bold rounded cursor-pointer ${
-                          dbMode === 'local' ? 'bg-amber-600 text-white shadow' : 'text-gray-400'
-                        }`}
-                      >
-                        本地密盒
-                      </button>
-                      <button
-                        onClick={() => setDbMode('supabase')}
-                        className={`px-2 py-1 text-[9px] font-bold rounded cursor-pointer ${
-                          dbMode === 'supabase' ? 'bg-amber-600 text-white shadow' : 'text-gray-400'
-                        }`}
-                      >
-                        云端同步
-                      </button>
-                    </div>
-                  </div>
 
                   {dbMode === 'supabase' ? (
                     <div className="space-y-3">
@@ -1474,25 +1463,38 @@ export default function PersonalProfile({
                       <p className="font-bold mb-1 text-emerald-500">💡 数据库表配置指南</p>
                       请在您的 Supabase 控制台的 SQL Editor 中执行下述语句以建立语料库表格：
                       <pre className="mt-1.5 p-2 bg-black/40 text-[8.5px] rounded border border-white/5 font-mono overflow-x-auto text-[#a6e22e] leading-normal select-all">
-{`create table book_quotes (
+{`-- 1. 答案之书与日签
+create table book_quotes (
   id bigint generated always as identity primary key,
   quote text not null,
   category text default 'general',
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
-
 alter table book_quotes enable row level security;
-create policy "Allow public read-only" on book_quotes for select using (true);
-create policy "Allow public insert-only" on book_quotes for insert with check (true);`}
+create policy "Allow public read" on book_quotes for select using (true);
+create policy "Allow public insert" on book_quotes for insert with check (true);
+
+-- 2. 电子木鱼云端预设词库
+create table muyu_presets (
+  id bigint generated always as identity primary key,
+  theme_name text not null,
+  base_word text not null,
+  floatings text[] not null,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+alter table muyu_presets enable row level security;
+create policy "Allow public read" on muyu_presets for select using (true);
+create policy "Allow public insert" on muyu_presets for insert with check (true);`}
                       </pre>
                     </div>
                   )}
                 </div>
               </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
 
       {/* SECONDARY WEBPAGE DIALOG COMPACT MODAL PANEL OVERLAY */}
       <AnimatePresence>
@@ -1509,9 +1511,18 @@ create policy "Allow public insert-only" on book_quotes for insert with check (t
           >
             {/* Header toolbar */}
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-500/10 shrink-0">
-              <div className="flex items-center gap-1 text-sky-500">
-                <BookOpenCheck className="w-4 h-4 shrink-0" />
-                <span className="text-[11.5px] font-black uppercase font-sans">写今日反思与日签</span>
+              <div className="flex items-center gap-1.5 text-amber-500">
+                {recordType === 'diary' ? (
+                  <>
+                    <Edit2 className="w-4 h-4 shrink-0 text-amber-500" />
+                    <span className="text-[11.5px] font-black uppercase font-sans">阅己 • 随笔日记</span>
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="w-4 h-4 shrink-0 text-amber-500" />
+                    <span className="text-[11.5px] font-black uppercase font-sans">叩问 • 答案之书</span>
+                  </>
+                )}
               </div>
               <button
                 onClick={() => {
@@ -1521,32 +1532,6 @@ create policy "Allow public insert-only" on book_quotes for insert with check (t
                 className={`p-1 rounded-full cursor-pointer hover:bg-gray-500/15 transition-colors`}
               >
                 <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Selector: Daily Quote vs Diary */}
-            <div className={`grid grid-cols-2 p-1 rounded-xl mb-4 text-xs font-bold grow-0 shrink-0 ${
-              isDark ? 'bg-slate-950/80 border border-slate-900' : 'bg-stone-200/50 border border-stone-200'
-            }`}>
-              <button
-                onClick={() => setRecordType('diary')}
-                className={`py-1.5 rounded-lg text-[11px] cursor-pointer transition-all ${
-                  recordType === 'diary'
-                    ? isDark ? 'bg-slate-900 border border-slate-800 text-sky-500' : 'bg-white border border-stone-300 text-stone-900 shadow-sm'
-                    : isDark ? 'text-gray-500' : 'text-stone-500'
-                }`}
-              >
-                随笔日记
-              </button>
-              <button
-                onClick={() => setRecordType('tag')}
-                className={`py-1.5 rounded-lg text-[11px] cursor-pointer transition-all ${
-                  recordType === 'tag'
-                    ? isDark ? 'bg-slate-900 border border-slate-800 text-sky-500' : 'bg-white border border-stone-300 text-stone-900 shadow-sm'
-                    : isDark ? 'text-gray-500' : 'text-stone-500'
-                }`}
-              >
-                答案之书
               </button>
             </div>
 

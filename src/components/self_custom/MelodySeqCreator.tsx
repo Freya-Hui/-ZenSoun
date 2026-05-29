@@ -73,6 +73,9 @@ export default function MelodySeqCreator({
   // Melody Selection state (random or custom_pitch or creations)
   const [activeSourceType, setActiveSourceType] = useState<'random' | 'custom_pitch' | 'creations'>('random');
 
+  // Random melody generation speed (ms per beat), defaults to 2800
+  const [randomSpeed, setRandomSpeed] = useState<number>(2800);
+
   // Custom pitch sequencer looper states
   const [customPitchText, setCustomPitchText] = useState('宫 商 角 徵 羽 A4 C5');
   const [customPitchSpeed, setCustomPitchSpeed] = useState(450); // ms per step
@@ -212,12 +215,12 @@ export default function MelodySeqCreator({
   // Sync random melody generator
   useEffect(() => {
     if (isMelodyActive) {
-      audioEngine.playMelody(instrument, 2800);
+      audioEngine.playMelody(instrument, randomSpeed);
     } else {
       audioEngine.stopMelody();
     }
     return () => audioEngine.stopMelody();
-  }, [isMelodyActive, instrument]);
+  }, [isMelodyActive, instrument, randomSpeed]);
 
   // Sync custom pitch loops and stop when switching away or unmounting
   useEffect(() => {
@@ -578,7 +581,7 @@ export default function MelodySeqCreator({
 
       <div className="space-y-3.5">
         
-        {/* TAB NAVIGATION FOR MELODY SOURCE (随机、创作) */}
+        {/* TAB NAVIGATION FOR MELODY SOURCE (随机、自写、创作) */}
         <div>
           <span className={`text-[10px] block mb-2 font-black ${isDark ? 'text-gray-400' : 'text-[#826e5e]'}`}>
             1. 选择 弦能演奏运作源：
@@ -621,7 +624,7 @@ export default function MelodySeqCreator({
                     : 'bg-[#ebdcb9]/30 border-[#dacdb9]/40 text-[#5c4033] hover:bg-[#ebdcb9]/55'
               }`}
             >
-              自写音高循环
+              自写旋律
             </button>
             <button
               onClick={() => {
@@ -658,8 +661,27 @@ export default function MelodySeqCreator({
                   舒解脑重
                 </span>
               </div>
+
+              {/* NEW: Slidable range to adjust random metronome beat speed as requested */}
+              <div className="space-y-1.5">
+                <label className={`text-[9.5px] font-bold block ${isDark ? 'text-gray-450' : 'text-[#826e5e]'}`}>
+                  调节节拍间隔: {randomSpeed}ms (约合 {(randomSpeed / 1000).toFixed(1)} 秒/乐符)
+                </label>
+                <input
+                  type="range"
+                  min="1000"
+                  max="5000"
+                  step="200"
+                  value={randomSpeed}
+                  onChange={(e) => {
+                    const speed = Number(e.target.value);
+                    setRandomSpeed(speed);
+                  }}
+                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-amber-500/15 accent-amber-500"
+                />
+              </div>
               
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex flex-wrap gap-2 items-center pt-1">
                 <button
                   onClick={handleToggleRandomGen}
                   className={`py-2 px-4 rounded-xl text-[10.5px] font-black transition-all cursor-pointer flex-1 flex items-center justify-center gap-1.5 ${
@@ -686,23 +708,23 @@ export default function MelodySeqCreator({
             </div>
           )}
 
-          {/* TAB 2: CUSTOM PITCH SEQUENCER LOOPER */}
+          {/* TAB 2: CUSTOM MELODY INPUT (自写旋律) */}
           {activeSourceType === 'custom_pitch' && (
             <div className="space-y-3.5 text-left font-sans select-none">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] text-stone-500 font-extrabold flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-amber-500 animate-pulse" /> 音高序列智能自适应
+                <span className="text-[10px] text-[#a67c52] font-extrabold flex items-center gap-1.5 uppercase">
+                  <Sliders className="w-3.5 h-3.5 text-amber-500" /> 简明旋律音符
                 </span>
                 <span className="flex items-center gap-1 text-[8.5px] bg-[#a67c52]/10 text-[#a67c52] px-2 py-0.5 rounded-full font-bold">
-                  千人千调
+                  简谱写新
                 </span>
               </div>
               
               <p className={`text-[10px] leading-relaxed ${isDark ? 'text-gray-400' : 'text-[#826e5e]'}`}>
-                简明自写：支持我国傳統<b>五音 宫 商 角 徵 羽</b>、简谱数字<b>1-7</b>、或英文音名<b>C4 E4 G4 A4</b>，通过<strong>空格</strong>隔开。系统会自动分析物理和弦并在后台无限自动优质循环。
+                在输入框中通过空格隔开写出您的乐律（支持数字1-7、传统五音“宫商角徵羽”或音名A4, C5等），系统会自动转化为持续乐律播放。
               </p>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[9.5px] font-bold block opacity-75">请输入自定义音高谱串：</label>
                 <input
                   type="text"
@@ -725,52 +747,94 @@ export default function MelodySeqCreator({
                 />
               </div>
 
-              {/* Controls speed & live instruments */}
-              <div className="grid grid-cols-2 gap-2 text-[10px]">
-                <div>
-                  <label className="text-[9px] font-semibold block opacity-75 mb-1">乐器音色：</label>
-                  <select
-                    value={instrument}
-                    onChange={(e) => {
-                      const inst = e.target.value as any;
-                      setInstrument(inst);
-                      if (isCustomPitchLoopPlaying) {
-                        const parsed = parsePitchInput(customPitchText);
-                        audioEngine.playCustomPitchLoop(parsed, inst, customPitchSpeed);
-                      }
-                    }}
-                    className={`w-full text-[10.5px] p-2 rounded-lg focus:outline-none focus:ring-1 ${
-                      isDark 
-                        ? 'bg-slate-950 border-slate-800 focus:ring-amber-500 text-gray-300' 
-                        : 'bg-white border-stone-200 focus:ring-[#a67c52] text-stone-700'
-                    }`}
-                  >
-                    <option value="bowl">磬钵 resonance</option>
-                    <option value="harp">古竖琴 warm harp</option>
-                    <option value="bell">天外音 bell</option>
-                    <option value="piano">柔雅钢琴 piano</option>
-                  </select>
-                </div>
+              {/* Speed metronome adjustment */}
+              <div className="space-y-1.5">
+                <label className="text-[9.5px] font-semibold block opacity-75">间鸣速度 (间距): {customPitchSpeed}ms</label>
+                <input
+                  type="range"
+                  min="180"
+                  max="1000"
+                  step="20"
+                  value={customPitchSpeed}
+                  onChange={(e) => {
+                    const speed = Number(e.target.value);
+                    setCustomPitchSpeed(speed);
+                    if (isCustomPitchLoopPlaying) {
+                      const parsed = parsePitchInput(customPitchText);
+                      audioEngine.playCustomPitchLoop(parsed, instrument, speed);
+                    }
+                  }}
+                  className="w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-amber-500/15 accent-amber-500"
+                />
+              </div>
 
-                <div>
-                  <label className="text-[8.5px] font-semibold block opacity-75 mb-1">间鸣速度 (间距): {customPitchSpeed}ms</label>
-                  <input
-                    type="range"
-                    min="180"
-                    max="1000"
-                    step="20"
-                    value={customPitchSpeed}
-                    onChange={(e) => {
-                      const speed = Number(e.target.value);
-                      setCustomPitchSpeed(speed);
-                      if (isCustomPitchLoopPlaying) {
-                        const parsed = parsePitchInput(customPitchText);
-                        audioEngine.playCustomPitchLoop(parsed, instrument, speed);
-                      }
-                    }}
-                    className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-amber-500/15 accent-amber-500"
-                  />
+              {/* INTEGRATION: Moved Select Mindfulness Instruments selector HERE as requested */}
+              <div className="space-y-1.5 text-left pt-1">
+                <span className={`text-[10px] block font-black ${isDark ? 'text-gray-400' : 'text-[#826e5e]'}`}>
+                  选择正念演奏乐器 (点选即可即时鸣响切换音源)：
+                </span>
+                <div className="grid grid-cols-4 gap-1" id="modular_instruments_wrapper">
+                  {(['bowl', 'harp', 'bell', 'piano'] as const).map(inst => {
+                    const labelMap = { bowl: '磬钵', harp: '至灵竖琴', bell: '空灵编钟', piano: '和韵钢琴' };
+                    const isSelected = instrument === inst;
+                    return (
+                      <button
+                        key={inst}
+                        onClick={() => {
+                          handleInstrumentChange(inst);
+                          if (isCustomPitchLoopPlaying) {
+                            const parsed = parsePitchInput(customPitchText);
+                            audioEngine.playCustomPitchLoop(parsed, inst, customPitchSpeed);
+                          }
+                        }}
+                        className={`py-1.5 text-[9px] font-bold font-sans rounded-xl border transition-all cursor-pointer truncate ${
+                          isSelected
+                            ? isDark
+                              ? 'bg-sky-500/20 border-sky-400 text-sky-300 font-extrabold shadow-sm'
+                              : 'bg-[#a67c52] border-[#a67c52] text-white font-black shadow-sm'
+                            : isDark 
+                              ? 'bg-slate-900 border-slate-800 text-gray-450 hover:text-white' 
+                              : 'bg-[#ebdcb9]/30 border-[#dacdb9]/40 text-[#5c4033] hover:bg-[#ebdcb9]/60'
+                        }`}
+                      >
+                        {labelMap[inst]}
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* INTEGRATION: Moved "自谱新调" here and renamed to "展开谱曲板" as requested */}
+              <div className="pt-1.5">
+                <button
+                  onClick={() => {
+                    audioEngine.ensureContext();
+                    if (isMelodyActive) {
+                      setIsMelodyActive(false);
+                    }
+                    if (isCustomPitchLoopPlaying) {
+                      audioEngine.stopCustomPitchLoop();
+                      setIsCustomPitchLoopPlaying(false);
+                    }
+                    setBars(Array.from({ length: 4 }, () => 
+                      Array.from({ length: 5 }, () => Array(8).fill(false))
+                    ));
+                    setActiveBar(0);
+                    setCurrentPlayBar(0);
+                    setSelectedBarsList([]);
+                    setIsPlayingSeq(false);
+                    setCreationTitle(''); 
+                    setShowComposePanel(true);
+                  }}
+                  className={`w-full py-2.5 px-4 rounded-xl text-[10.5px] font-black tracking-wide transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+                    isDark
+                      ? 'bg-slate-900 border border-slate-800 text-sky-400 hover:bg-slate-800'
+                      : 'bg-[#f4ebd9] text-[#a67c52] border border-[#dacdb9] hover:bg-[#ede0ca]'
+                  }`}
+                >
+                  <Sliders className="w-3.5 h-3.5 animate-pulse" />
+                  <span>展开谱曲板</span>
+                </button>
               </div>
 
               {/* Action play button */}
@@ -780,7 +844,7 @@ export default function MelodySeqCreator({
                   isCustomPitchLoopPlaying
                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10'
                     : isDark
-                      ? 'bg-amber-500/20 text-text-amber-300 hover:bg-amber-500/30 border border-amber-500/20'
+                      ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/20'
                       : 'bg-[#ebdcb9] text-[#5c4033] hover:bg-[#dfd3bd] border border-[#dacdb9]/70'
                 }`}
               >
@@ -821,7 +885,7 @@ export default function MelodySeqCreator({
                     }}
                     className="py-1 px-3 bg-[#a67c52]/15 text-[#a67c52] hover:bg-[#a67c52]/25 font-bold text-[9px] rounded-lg border border-[#a67c52]/20 inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <span>开启步进拼轨谱曲板 (首作开曲)</span>
+                    <span>展开谱曲板 (首作开曲)</span>
                   </button>
                 </div>
               ) : (
@@ -873,66 +937,6 @@ export default function MelodySeqCreator({
           )}
         </div>
 
-        {/* Instrumental Selector Panel */}
-        <div className="text-left">
-          <span className={`text-[10px] block mb-2 font-black ${isDark ? 'text-gray-400' : 'text-[#826e5e]'}`}>
-            2. 正念演奏乐器 (点选即可即时鸣响切换音源)：
-          </span>
-          <div className="grid grid-cols-4 gap-1.5" id="modular_instruments_wrapper">
-            {(['bowl', 'harp', 'bell', 'piano'] as const).map(inst => {
-              const labelMap = { bowl: '磬钵禅鸣', harp: '至灵竖琴', bell: '空灵编钟', piano: '和韵钢琴' };
-              const isSelected = instrument === inst;
-              return (
-                <button
-                  key={inst}
-                  onClick={() => handleInstrumentChange(inst)}
-                  className={`py-2 text-[10px] font-bold font-sans rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? isDark
-                        ? 'bg-sky-520/20 border-sky-400 text-sky-300 font-extrabold shadow-sm'
-                        : 'bg-[#a67c52] border-[#a67c52] text-white font-black shadow-sm'
-                      : isDark 
-                        ? 'bg-slate-900 border-slate-800 text-gray-400 hover:text-white hover:bg-slate-850' 
-                        : 'bg-[#ebdcb9]/40 border-[#dacdb9]/50 text-[#5c4033] hover:text-[#2d1e18] hover:bg-[#ebdcb9]/70'
-                  }`}
-                >
-                  {labelMap[inst]}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Global Control center trigger button */}
-        <div className="pt-1 select-none flex justify-end">
-          <button
-            onClick={() => {
-              audioEngine.ensureContext();
-              if (isMelodyActive) {
-                triggerToast("提示：随机生成模式处于激活状态。开启谱曲板会将随机生成自动关闭。");
-                setIsMelodyActive(false);
-              }
-              // ALWAYS reset elements to default cold state when user clicks on create a new track
-              setBars(Array.from({ length: 4 }, () => 
-                Array.from({ length: 5 }, () => Array(8).fill(false))
-              ));
-              setActiveBar(0);
-              setCurrentPlayBar(0);
-              setSelectedBarsList([]);
-              setIsPlayingSeq(false);
-              setCreationTitle(''); // Clean name initialization to prevent old carried state !
-              setShowComposePanel(true);
-            }}
-            className={`w-full py-2.5 px-4 rounded-xl text-[11px] font-black tracking-wide transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
-              isDark
-                ? 'bg-slate-900 border border-slate-800 text-sky-450 hover:bg-slate-800/80 hover:border-slate-700'
-                : 'bg-[#f4ebd9] text-[#a67c52] border border-[#dacdb9] hover:bg-[#ede0ca]'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5 animate-pulse" />
-            <span>自谱新调：开启步进拼轨谱曲板</span>
-          </button>
-        </div>
       </div>
 
       {/* --- LEVEL-2 FULL SCREEN DAW COMPOSER POPUP OVERLAY (高保真二级页面弹窗) --- */}

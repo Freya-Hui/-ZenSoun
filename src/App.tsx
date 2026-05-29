@@ -618,7 +618,7 @@ export default function App() {
                         : theme === 'night' ? 'text-gray-500' : 'text-stone-500'
                     }`}
                   >
-                    修心注册
+                    账号注册
                   </button>
                 </div>
 
@@ -808,7 +808,7 @@ export default function App() {
                       : 'bg-stone-900 text-white hover:bg-stone-850 shadow'
                   }`}
                 >
-                  {activeAuthTab === 'guest' ? '以游客身份轻启修行' : activeAuthTab === 'login' ? '立即验证登录' : '创建修心账户'}
+                  {activeAuthTab === 'guest' ? '以游客身份轻启修行' : activeAuthTab === 'login' ? '立即验证登录' : '创建修行账户'}
                 </button>
               </div>
             </div>
@@ -1020,7 +1020,7 @@ export default function App() {
                   }`}
                 >
                   <Radio className="w-5 h-5" />
-                  <span className="text-[9.5px] mt-1 font-sans">修心</span>
+                  <span className="text-[9.5px] mt-1 font-sans">修行</span>
                 </button>
 
                 {/* Community/Disc Tab */}

@@ -139,3 +139,64 @@ export async function addDiaryPrompt(prompt: string): Promise<boolean> {
   }
 }
 
+export interface MuyuPreset {
+  id?: number;
+  theme_name: string;
+  base_word: string;
+  floatings: string[];
+  created_at?: string;
+}
+
+/**
+ * Fetch Custom Wooden Fish (muyu) corpora from Supabase
+ */
+export async function fetchMuyuPresets(): Promise<MuyuPreset[] | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('muyu_presets')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching Supabase muyu_presets:', error.message);
+      return null;
+    }
+
+    return data as MuyuPreset[];
+  } catch (err) {
+    console.error('Exception fetching muyu_presets:', err);
+  }
+  return null;
+}
+
+/**
+ * Add a custom Wooden Fish preset to Supabase
+ */
+export async function addMuyuPreset(preset: MuyuPreset): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase
+      .from('muyu_presets')
+      .insert([{
+        theme_name: preset.theme_name,
+        base_word: preset.base_word,
+        floatings: preset.floatings
+      }]);
+
+    if (error) {
+      console.error('Error inserting muyu_preset to Supabase:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Exception adding muyu_preset:', err);
+    return false;
+  }
+}
+
+

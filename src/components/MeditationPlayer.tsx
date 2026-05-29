@@ -213,7 +213,7 @@ export default function MeditationPlayer({
   
   // Advanced Acoustic controls to solve background line noise (hum and static hiss)
   const [enableBrainwave, setEnableBrainwave] = useState<boolean>(true);
-  const [enableAmbientMix, setEnableAmbientMix] = useState<boolean>(true);
+  const [enableAmbientMix, setEnableAmbientMix] = useState<boolean>(false);
   const [brainwaveVolume, setBrainwaveVolume] = useState<number>(50); // 0 to 100, default 50
   const [ambientVolume, setAmbientVolume] = useState<number>(50); // 0 to 100, default 50
 
@@ -736,6 +736,12 @@ export default function MeditationPlayer({
     const nextIsPlaying = !isPlaying;
     setIsPlaying(nextIsPlaying);
     
+    // 点击播放的时候 能量共鸣自动默认开启在最好的位置
+    if (nextIsPlaying) {
+      setEnableBrainwave(true);
+      setBrainwaveVolume((prev) => (prev < 15 ? 50 : prev));
+    }
+    
     // Set custom fading symbol state
     fadeCountRef.current += 1;
     setFadingSymbol({ type: nextIsPlaying ? 'play' : 'pause', id: fadeCountRef.current });
@@ -901,8 +907,63 @@ export default function MeditationPlayer({
             : 'bg-gradient-to-b from-stone-100 to-white border-stone-200'
         }`} id="player_panel">
 
+        {/* Dynamic Wave Visualization Background */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-45">
+          <AudioVisualizer isPlaying={isPlaying} color={isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(166, 124, 82, 0.35)'} waveCount={3} />
+        </div>
+
+        {/* Transient clicking pop-fading indicator */}
+        <AnimatePresence>
+          {fadingSymbol && (
+            <motion.div
+              key={fadingSymbol.id}
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1.15, opacity: 0.8 }}
+              exit={{ scale: 1.45, opacity: 0 }}
+              transition={{ duration: 0.75, ease: 'easeOut' }}
+              className="absolute inset-0 m-auto w-12 h-12 bg-black/60 rounded-full flex items-center justify-center z-40 text-white pointer-events-none"
+              onAnimationComplete={() => {
+                setTimeout(() => setFadingSymbol(null), 100);
+              }}
+            >
+              {fadingSymbol.type === 'play' ? (
+                <Play className="w-5 h-5 ml-0.5 text-amber-400" />
+              ) : (
+                <Pause className="w-5 h-5 text-gray-300" />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Previous and Next Track Buttons flanking on Left and Right sides */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrevTrack();
+          }}
+          className={`absolute left-3 top-1/2 -translate-y-1/2 z-35 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-black/5 hover:bg-black/20 text-gray-400 hover:text-amber-500 hover:scale-105 active:scale-95 ${
+            isDark ? 'border border-slate-800' : 'border border-stone-200 shadow-xs bg-white/50'
+          }`}
+          title="上一首音轨"
+        >
+          <SkipBack className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleNextTrack();
+          }}
+          className={`absolute right-3 top-1/2 -translate-y-1/2 z-35 w-8 h-8 rounded-full flex items-center justify-center transition-all bg-black/5 hover:bg-black/20 text-gray-400 hover:text-amber-500 hover:scale-105 active:scale-95 ${
+            isDark ? 'border border-slate-800' : 'border border-stone-200 shadow-xs bg-white/50'
+          }`}
+          title="下一首音轨"
+        >
+          <SkipForward className="w-3.5 h-3.5" />
+        </button>
+
         {/* Header tags inside frame */}
-        <div className="relative flex justify-between items-center z-10 w-full font-sans mb-1" onClick={(e) => e.stopPropagation()}>
+        <div className="relative flex justify-between items-center z-10 w-full font-sans mb-1 px-8" onClick={(e) => e.stopPropagation()}>
           <span className={`px-2.5 py-0.5 rounded-full border text-[9.5px] font-bold uppercase tracking-wider flex items-center gap-1 ${
             isDark 
               ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
@@ -929,13 +990,13 @@ export default function MeditationPlayer({
         </div>
 
         {/* Current title info */}
-        <div className="relative text-center z-10 select-none">
-          <h2 className={`text-sm font-black tracking-wide font-sans truncate px-3 ${
+        <div className="relative text-center z-10 select-none px-11">
+          <h2 className={`text-sm font-black tracking-wide font-sans truncate ${
             isDark ? 'text-gray-100' : 'text-stone-850'
           }`}>
             {activeTrack.title}
           </h2>
-          <p className={`text-[10.5px] font-sans mt-0.5 leading-relaxed px-5 line-clamp-1 ${
+          <p className={`text-[10.5px] font-sans mt-0.5 leading-relaxed truncate ${
             isDark ? 'text-gray-400' : 'text-stone-500'
           }`}>
             {activeTrack.desc}
@@ -952,96 +1013,6 @@ export default function MeditationPlayer({
           </span>
         </div>
       )}
-
-      {/* 2. THE HIGH-CRAFT TACTILE EFFICACY STRENGTH SLIDER */}
-      <div className={`p-4 rounded-xl border transition-all ${
-        isDark ? 'bg-slate-950/60 border-slate-900 shadow-inner' : 'bg-white border-stone-200/80 shadow-sm'
-      }`} id="efficacy_intensity_slider_box">
-        <div className="flex justify-between items-center mb-1.5 font-sans">
-          <span className={`text-[11px] font-bold flex items-center gap-1 ${
-            isDark ? 'text-amber-400' : 'text-amber-700'
-          }`}>
-            <Volume2 className="w-3.5 h-3.5" /> 调节此功效的声音沉浸感 (强度)
-          </span>
-          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-            isDark ? 'bg-slate-900 text-amber-400' : 'bg-[#a67c52]/10 text-[#a67c52]'
-          }`}>
-            {activeTrack?.intensityLabel || '1级'}
-          </span>
-        </div>
-        
-        <p className={`text-[10px] font-sans mb-3 line-clamp-1 leading-normal ${
-          isDark ? 'text-gray-500' : 'text-stone-450'
-        }`}>
-          滑动拉升或降低声场，音疗将为您自适应调节配乐结构
-        </p>
-
-        {/* Tactile Range Slider Input representing different items */}
-        <div className="relative py-2 px-1">
-          <input
-            type="range"
-            min="1"
-            max={categoryTracks.length > 0 ? categoryTracks.length.toString() : (selectedCategory === 'wuyin' ? "5" : "3")}
-            step="1"
-            value={sliderLevel}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              if (categoryTracks[val - 1]?.isPremium && !isPremiumUser) {
-                onOpenSubscribeModal();
-                return;
-              }
-              setSliderLevel(val);
-            }}
-            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-amber-500/10 accent-amber-500 hover:accent-amber-400 focus:outline-none"
-            id="intensity_slider"
-          />
-          
-          <div className="flex justify-between text-[9px] font-sans text-gray-500 px-1 mt-1.5 selection:bg-transparent">
-            {Array.from({ length: categoryTracks.length > 0 ? categoryTracks.length : (selectedCategory === 'wuyin' ? 5 : 3) }).map((_, idx) => {
-              const lvl = idx + 1;
-              const isSelected = sliderLevel === lvl;
-              const trackItem = categoryTracks[idx];
-              let label = `${lvl}级`;
-              if (trackItem) {
-                const parts = trackItem.title.split(' • ');
-                label = parts[1] || parts[0];
-                if (label.length > 7) {
-                  label = label.slice(0, 6) + '..';
-                }
-              } else {
-                if (selectedCategory === 'wuyin') {
-                  if (lvl === 1) label = '宫脾';
-                  else if (lvl === 2) label = '商肺';
-                  else if (lvl === 3) label = '角肝';
-                  else if (lvl === 4) label = '徵心';
-                  else if (lvl === 5) label = '羽肾';
-                } else {
-                  if (lvl === 1) label = '1级 缓流';
-                  else if (lvl === 2) label = '2级 沉浸';
-                  else if (lvl === 3) label = '3级 极致';
-                }
-              }
-              return (
-                <span
-                  key={lvl}
-                  onClick={() => {
-                    if (categoryTracks[idx]?.isPremium && !isPremiumUser) {
-                      onOpenSubscribeModal();
-                      return;
-                    }
-                    setSliderLevel(lvl);
-                  }}
-                  className={`cursor-pointer transition-all ${
-                    isSelected ? 'text-amber-500 font-extrabold scale-105' : 'text-gray-400 font-normal hover:text-gray-500'
-                  }`}
-                >
-                  {label}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
       {/* 3. PROFESSIONAL SLEEP TIMER WIDGET */}
       <div className={`p-4 rounded-2xl border transition-all ${
@@ -1118,9 +1089,6 @@ export default function MeditationPlayer({
                 <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
                   能量共鸣
                 </span>
-                <span className="text-[9px] text-gray-500 font-sans leading-tight">
-                  低频双耳脉冲物理共鸣，感觉像深沉的耳鸣或微风长鸣气流音 (Binaural Hum)
-                </span>
               </div>
               
               <button
@@ -1162,9 +1130,6 @@ export default function MeditationPlayer({
               <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
                 <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
                   环境音
-                </span>
-                <span className="text-[9px] text-gray-500 font-sans leading-tight">
-                  播放时伴随叠加海浪、春雨微风等粉红/白噪音天气层，类似沙沙 the 背景底噪
                 </span>
               </div>
               

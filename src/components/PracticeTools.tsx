@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Play, Pause, RotateCcw, Heart, Info, CircleHelp, Settings, Check, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Play, Pause, RotateCcw, Heart, Info, CircleHelp, Settings, Check, Lock, ChevronLeft, ChevronRight, CloudLightning, Save } from 'lucide-react';
 import { audioEngine } from '../utils/audioEngine';
+import { fetchMuyuPresets, addMuyuPreset } from '../lib/supabase';
 
 interface FloatingText {
   id: number;
@@ -87,28 +88,32 @@ export default function PracticeTools({
 }
 
 // ========================
-// 1. ELECTRONIC WOODEN FISH THEME LIBRARIES
+// 1. ELECTRONIC WOODEN FISH THEME LIBRARIES (UPDATED & ENRICHED)
 // ========================================
 const presetThemeLibraries: Record<string, { baseWord: string; floatings: string[] }> = {
   '祈福安康': {
     baseWord: '喜乐安宁',
-    floatings: ['平安顺遂', '福运滋长', '身体安康', '消灾解厄', '喜乐无忧', '功德无量']
+    floatings: ['平安顺遂', '福运滋长', '身体安康', '消灾解厄', '喜乐无忧', '功德无量', '福慧圆满']
   },
-  '学业功名': {
-    baseWord: '金榜题名',
-    floatings: ['心神专注', '智慧开朗', '思路清爽', '金榜飘香', '一举夺魁', '心想事成']
-  },
-  '平和去噪': {
+  '舒心去噪': {
     baseWord: '心无挂碍',
-    floatings: ['平心静气', '烦恼消退', '浮躁全消', '松弛安顿', '息心凝神', '心境明澈']
+    floatings: ['有求皆苦', '无求乃乐', '平心静气', '万念俱寂', '息心免扰', '不染红尘', '心如止水']
   },
-  '事业财富': {
-    baseWord: '诸事顺遂',
-    floatings: ['财源广进', '遇难呈祥', '生意兴隆', '大展宏图', '贵人相助', '步步高升']
+  '开慧悟道': {
+    baseWord: '自性清净',
+    floatings: ['般若开显', '灵台清澈', '照见五蕴', '无挂碍故', '破迷开悟', '智慧如海', '澄明不二']
   },
-  '舒眠宁神': {
-    baseWord: '安然入梦',
-    floatings: ['肢体放松', '杂念退避', '梦境甘甜', '平稳安眠', '万籁寂静', '神怡气爽']
+  '学业考运': {
+    baseWord: '金榜题名',
+    floatings: ['灵感泉涌', '一挥而就', '过目不忘', '金榜夺魁', '思路清爽', '文思敏捷', '心神专注']
+  },
+  '财源顺遂': {
+    baseWord: '诸事顺意',
+    floatings: ['八方来财', '遇难呈祥', '大展宏图', '贵人引纳', '财运亨通', '步步高升', '圆满无碍']
+  },
+  '安眠静定': {
+    baseWord: '万籁平和',
+    floatings: ['肢体澄松', '神怡安定', '杂念不兴', '香甜大梦', '夜半祥柔', '气定神闲', '悠然解松']
   }
 };
 
@@ -130,23 +135,91 @@ function WoodenFishView({
   const [isStriking, setIsStriking] = useState(false);
   const floatIdRef = useRef(0);
 
+  const [themes, setThemes] = useState<Record<string, { baseWord: string; floatings: string[] }>>(presetThemeLibraries);
+
   const [positiveFloatings, setPositiveFloatings] = useState([
-    '平安顺遂', '福运滋长', '身体安康', '消灾解厄', '喜乐无忧', '功德无量'
+    '平安顺遂', '福运滋长', '身体安康', '消灾解厄', '喜乐无忧', '功德无量', '福慧圆满'
   ]);
 
   const [themeInput, setThemeInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('muyu_count', totalCount.toString());
   }, [totalCount]);
 
+  // Load Cloud Muyu presets on mount
+  useEffect(() => {
+    async function loadCloudPresets() {
+      try {
+        const cloudPresets = await fetchMuyuPresets();
+        if (cloudPresets && cloudPresets.length > 0) {
+          setThemes(prev => {
+            const merged = { ...prev };
+            cloudPresets.forEach(preset => {
+              merged[preset.theme_name] = {
+                baseWord: preset.base_word,
+                floatings: preset.floatings
+              };
+            });
+            return merged;
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load cloud presets', e);
+      }
+    }
+    loadCloudPresets();
+  }, []);
+
   const handleSelectTheme = (themeName: string) => {
     setActiveTheme(themeName);
-    const lib = presetThemeLibraries[themeName];
+    const lib = themes[themeName];
     if (lib) {
       setMantraText(lib.baseWord);
       setPositiveFloatings(lib.floatings);
+    }
+  };
+
+  const handleSaveThemeToCloud = async () => {
+    if (!isPremiumUser) {
+      if (onOpenSubscribeModal) onOpenSubscribeModal();
+      return;
+    }
+    if (activeTheme !== 'custom') {
+      alert('请在下方输入文字，生成并预览AI定制词库后，再将其保存到云端！');
+      return;
+    }
+    const themeName = prompt('输入此自定语料库在云端的主题名称（如：“元气早晨”，“逆转焦躁”）：');
+    if (!themeName) return;
+
+    setIsSavingCloud(true);
+    try {
+      const success = await addMuyuPreset({
+        theme_name: themeName,
+        base_word: mantraText,
+        floatings: positiveFloatings
+      });
+
+      if (success) {
+        alert('恭喜，该定制已经连通并同步保存到您的 Supabase 数据库！');
+        setThemes(prev => ({
+          ...prev,
+          [themeName]: {
+            baseWord: mantraText,
+            floatings: positiveFloatings
+          }
+        }));
+        setActiveTheme(themeName);
+      } else {
+        alert('保存失败。请先确认您在“我 -> 情绪走势 & 数据库云同步”中正确配置了 Supabase 密钥并创建了相关的表格。');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('连接云端异常，请确认 Supabase 配置');
+    } finally {
+      setIsSavingCloud(false);
     }
   };
 
@@ -319,23 +392,27 @@ function WoodenFishView({
           <Sparkles className="w-3.5 h-3.5" /> 预设默念主题词库
         </p>
         <div className="flex flex-wrap gap-1.5 mb-4" id="muyu_mantra_list">
-          {Object.keys(presetThemeLibraries).map(themeName => (
-            <button
-              key={themeName}
-              onClick={() => handleSelectTheme(themeName)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-sans transition-all cursor-pointer ${
-                activeTheme === themeName
-                  ? isDark 
-                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40'
-                    : 'bg-[#a67c52]/10 text-[#a67c52] border border-[#a67c52]/30 font-bold'
-                  : isDark 
-                    ? 'bg-slate-800/40 text-gray-400 border border-transparent hover:bg-slate-800'
-                    : 'bg-stone-100/60 text-stone-600 border border-stone-200/40 hover:bg-stone-200/40'
-              }`}
-            >
-              {themeName}
-            </button>
-          ))}
+          {Object.keys(themes).map(themeName => {
+            const isCloudTheme = !(themeName in presetThemeLibraries);
+            return (
+              <button
+                key={themeName}
+                onClick={() => handleSelectTheme(themeName)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-sans transition-all cursor-pointer flex items-center gap-1 ${
+                  activeTheme === themeName
+                    ? isDark 
+                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/40 font-bold'
+                      : 'bg-[#a67c52]/10 text-[#a67c52] border border-[#a67c52]/30 font-bold'
+                    : isDark 
+                      ? 'bg-slate-800/40 text-gray-400 border border-transparent hover:bg-slate-800'
+                      : 'bg-stone-100/60 text-stone-600 border border-stone-200/40 hover:bg-stone-200/40'
+                }`}
+              >
+                {themeName}
+                {isCloudTheme && <CloudLightning className="w-2.5 h-2.5 text-sky-450 animate-pulse" />}
+              </button>
+            );
+          })}
           {activeTheme === 'custom' && (
             <button
               className="px-3 py-1.5 rounded-lg text-xs font-sans bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 cursor-default"
@@ -351,11 +428,24 @@ function WoodenFishView({
             <span className={`text-[10px] flex items-center gap-1 font-sans select-none ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>
               <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" /> 定制主题词库
             </span>
-            {!isPremiumUser && (
-              <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/25 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 select-none">
-                <Lock className="w-2.5 h-2.5" /> PRO
-              </span>
-            )}
+            <div className="flex items-center gap-1">
+              {activeTheme === 'custom' && (
+                <button
+                  type="button"
+                  onClick={handleSaveThemeToCloud}
+                  disabled={isSavingCloud}
+                  className="text-[9.5px] bg-sky-500/15 text-sky-400 border border-sky-500/25 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 cursor-pointer hover:bg-sky-500/25 transition-all"
+                  title="保存这一套AI定制句子至云端数据库"
+                >
+                  <Save className="w-2.5 h-2.5" /> {isSavingCloud ? '保存中...' : '同步云端'}
+                </button>
+              )}
+              {!isPremiumUser && (
+                <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/25 px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 select-none">
+                  <Lock className="w-2.5 h-2.5" /> PRO
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex gap-1.5">
             <input
@@ -529,7 +619,7 @@ function SingingBowlView({ isDark }: { isDark: boolean }) {
           <Info className="w-4 h-4 text-sky-400 mt-0.5 shrink-0" />
           <div className="text-xs text-gray-400 leading-relaxed font-sans">
             <span className="text-gray-200 font-semibold block mb-1">愈疗共振科学</span>
-            颂钵敲击后能产生悠长空鸣的微调泛音音圈，在身心深处引发“温和共鸣”，促使精神由焦虑紧绷瞬间向舒缓放松状态转化。常用于减压释扰、助眠理气、安抚焦躁心绪。
+            颂钵敲击后能产生悠长空鸣的微调泛音音圈，在身心深处引发温和共鸣，促使精神由焦虑紧绷瞬间向舒缓放松状态转化。常用于减压释扰、助眠理气、安抚焦躁心绪。
           </div>
         </div>
       </div>
@@ -596,11 +686,16 @@ function BreathingView({ isDark }: { isDark: boolean }) {
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(steps[0].duration);
   const [completedCycles, setCompletedCycles] = useState(0);
-  const [targetCycles, setTargetCycles] = useState<number>(5); // Default 5 rounds, -1 represent long meditation
+  const [targetTime, setTargetTime] = useState<number>(3); // Default 3 minutes, values: 1, 3, 5, -1
   const [enableSimultaneousMusic, setEnableSimultaneousMusic] = useState<boolean>(true); // Shared audio channel
   const timerRef = useRef<any>(null);
 
   const activeStep = steps[currentStepIdx];
+
+  const cycleDuration = steps.reduce((sum, s) => sum + s.duration, 0);
+  const targetCycles = targetTime === -1
+    ? -1
+    : Math.max(1, Math.round((targetTime * 60) / cycleDuration));
 
   // Reset function when switching breathing method
   const handleSwitchMethod = (newIdx: number) => {
@@ -658,6 +753,8 @@ function BreathingView({ isDark }: { isDark: boolean }) {
 
             return nextStep.duration;
           }
+          // On every second tick, play a calm wooden fish beat
+          audioEngine.strikeWoodenFish();
           return prev - 1;
         });
       }, 1000);
@@ -730,10 +827,14 @@ function BreathingView({ isDark }: { isDark: boolean }) {
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        {/* Massive Glowing Breathing Circle */}
-        <div className={`w-52 h-52 flex items-center justify-center relative rounded-full border transition-all ${
-          isDark ? 'bg-slate-900/30 border-slate-800/40' : 'bg-stone-100/40 border-[#ecdcb9]/50 shadow-inner'
-        }`}>
+        {/* Massive Glowing Interactive Breathing Circle */}
+        <div 
+          onClick={toggleBreath}
+          className={`w-52 h-52 flex items-center justify-center relative rounded-full border transition-all cursor-pointer hover:border-amber-500/20 ${
+            isDark ? 'bg-slate-900/30 border-slate-800/40' : 'bg-stone-100/40 border-[#ecdcb9]/50 shadow-inner'
+          }`}
+          title="点击控制开启/暂停吐纳"
+        >
           {/* Animated fluid circle representing lungs */}
           <motion.div
             animate={{ scale: ringScale }}
@@ -743,30 +844,54 @@ function BreathingView({ isDark }: { isDark: boolean }) {
             }`}
           />
 
+          {/* Persistent fading play/pause cue overlay */}
+          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ 
+                opacity: isRunning ? 0 : 1, 
+                scale: isRunning ? 0.8 : 1 
+              }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }}
+              className={`w-12 h-12 rounded-full flex items-center justify-center border backdrop-blur-xs transition-all shadow-md ${
+                isDark 
+                  ? 'bg-slate-950/75 border-slate-800 text-amber-500' 
+                  : 'bg-white/85 border-stone-200 text-[#a67c52]'
+              }`}
+            >
+              <Play className="w-5 h-5 ml-0.5 text-inherit animate-pulse" />
+            </motion.div>
+          </div>
+
           {/* Counter display in absolute center */}
           <div className="relative flex flex-col items-center z-10 select-none font-sans">
             {isRunning ? (
-              <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center"
+              >
                 <p className="text-[10px] text-gray-400 tracking-wider">进行中</p>
-                <p className={`text-sm font-black mt-1 text-center h-6 px-1 max-w-[120px] ${isDark ? 'text-white' : 'text-stone-800'}`}>
-                  {activeStep.text.split(' ')[0]}
+                <p className={`text-xs font-black mt-0.5 text-center px-1 truncate max-w-[120px] ${isDark ? 'text-white' : 'text-stone-800'}`}>
+                  {activeStep.text.split('...')[0]}
                 </p>
-                <div className={`text-3xl font-black font-mono mt-1 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'}`}>
+                <div className={`text-2xl font-black font-mono mt-1 ${isDark ? 'text-amber-400' : 'text-[#a67c52]'}`}>
                   {timeLeft}秒
                 </div>
-              </>
+              </motion.div>
             ) : (
-              <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center"
+              >
                 <p className={`text-xs font-black tracking-wide ${isDark ? 'text-amber-500' : 'text-[#a67c52]'}`}>
                   已对齐
                 </p>
-                <p className="text-[10px] text-gray-400 mt-1 text-center tracking-wide font-black">
+                <p className="text-[10px] text-gray-400 mt-0.5 text-center tracking-wide font-black">
                   {currentMethod.shortLabel}
                 </p>
-                <p className="text-[9px] text-gray-500 mt-0.5 font-bold">
-                  点击下方开始
-                </p>
-              </>
+              </motion.div>
             )}
           </div>
         </div>
@@ -775,7 +900,7 @@ function BreathingView({ isDark }: { isDark: boolean }) {
         <button
           onClick={handleNext}
           className={`p-2 rounded-full cursor-pointer transition-colors active:scale-95 ${
-            isDark ? 'bg-slate-900 border border-slate-800 text-gray-500 hover:text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200 hover:text-stone-700'
+            isDark ? 'bg-slate-900 border border-slate-800 text-gray-400 hover:text-white' : 'bg-stone-100 text-stone-400 hover:bg-stone-200 hover:text-stone-700'
           }`}
           title="下一个调息法"
         >
@@ -789,21 +914,22 @@ function BreathingView({ isDark }: { isDark: boolean }) {
       }`}>
         <div className="flex items-center justify-between">
           <span className={`text-[10px] font-black ${isDark ? 'text-gray-300' : 'text-stone-800'}`}>
-            调息轮数预设
+            冥想时间预设
           </span>
           <span className="text-[9px] font-mono text-gray-500 font-bold">
-            {targetCycles === -1 ? '长时间冥想' : `拟定 ${targetCycles} 轮`}
+            {targetTime === -1 ? '无限调息' : `约 ${targetTime} 分钟 (共 ~${targetCycles} 轮)`}
           </span>
         </div>
         
-        <div className="grid grid-cols-5 gap-1.5">
-          {[3, 5, 10, 15, -1].map((val) => {
-            const isSel = targetCycles === val;
+        <div className="grid grid-cols-4 gap-1.5">
+          {[1, 3, 5, -1].map((val) => {
+            const isSel = targetTime === val;
+            const label = val === -1 ? '自定义' : `${val}分钟`;
             return (
               <button
                 key={val}
                 onClick={() => {
-                  setTargetCycles(val);
+                  setTargetTime(val);
                   setCompletedCycles(0);
                 }}
                 className={`py-1 rounded-lg text-[9.5px] font-extrabold cursor-pointer transition-all ${
@@ -816,39 +942,37 @@ function BreathingView({ isDark }: { isDark: boolean }) {
                       : 'bg-stone-50 border border-stone-150 text-stone-650 hover:bg-stone-100'
                 }`}
               >
-                {val === -1 ? '无限' : `${val}轮`}
+                {label}
               </button>
             );
           })}
         </div>
 
-        {targetCycles === -1 && (
-          <div className="flex items-center justify-between mt-1 px-1 pt-2 border-t border-dashed border-slate-500/20">
-            <span className={`text-[9.5px] font-semibold leading-relaxed ${isDark ? 'text-gray-400' : 'text-stone-600'}`}>
-              长时间冥想：同时开启背景音乐与呼吸提示音
-            </span>
-            <button
-              onClick={() => {
-                const nextVal = !enableSimultaneousMusic;
-                setEnableSimultaneousMusic(nextVal);
-                if (isRunning) {
-                  if (nextVal) {
-                    window.dispatchEvent(new CustomEvent('zensound-toggle-play'));
-                  } else {
-                    window.dispatchEvent(new CustomEvent('zensound-pause'));
-                  }
+        <div className="flex items-center justify-between mt-1 px-1 pt-2 border-t border-dashed border-slate-500/20">
+          <span className={`text-[9.5px] font-semibold leading-relaxed ${isDark ? 'text-gray-400' : 'text-stone-600'}`}>
+            同时开启背景音乐与呼吸提示音 (双效声能)
+          </span>
+          <button
+            onClick={() => {
+              const nextVal = !enableSimultaneousMusic;
+              setEnableSimultaneousMusic(nextVal);
+              if (isRunning) {
+                if (nextVal) {
+                  window.dispatchEvent(new CustomEvent('zensound-toggle-play'));
+                } else {
+                  window.dispatchEvent(new CustomEvent('zensound-pause'));
                 }
-              }}
-              className={`w-8 h-4 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
-                enableSimultaneousMusic ? 'bg-amber-500' : 'bg-slate-300/35'
-              }`}
-            >
-              <div className={`h-3 w-3 rounded-full bg-white transition-all shadow-sm transform duration-300 ${
-                enableSimultaneousMusic ? 'translate-x-4' : 'translate-x-0'
-              }`} />
-            </button>
-          </div>
-        )}
+              }
+            }}
+            className={`w-8 h-4 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
+              enableSimultaneousMusic ? 'bg-amber-500' : 'bg-slate-300/35'
+            }`}
+          >
+            <div className={`h-3 w-3 rounded-full bg-white transition-all shadow-sm transform duration-300 ${
+              enableSimultaneousMusic ? 'translate-x-4' : 'translate-x-0'
+            }`} />
+          </button>
+        </div>
       </div>
 
       {/* SWIPE / DOT INDICATORS (…): 代表切换调息选项 */}
@@ -874,46 +998,22 @@ function BreathingView({ isDark }: { isDark: boolean }) {
         })}
       </div>
 
-      {/* Control Buttons */}
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          onClick={toggleBreath}
-          className={`px-8 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer ${
-            isRunning
-              ? 'bg-amber-600/10 text-amber-500 border border-amber-500/40 hover:bg-amber-600/20 shadow-none'
-              : isDark 
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' 
-                : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow'
-          }`}
-        >
-          {isRunning ? <><Pause className="w-4 h-4" /> 暂停调息</> : <><Play className="w-4 h-4 text-currentColor" /> 开始引导</>}
-        </button>
-
-        {completedCycles > 0 || isRunning ? (
+      {/* Control Actions - Minimal resetting trigger only */}
+      {(completedCycles > 0 || isRunning) && (
+        <div className="mt-1 flex justify-center">
           <button
             onClick={handleReset}
-            className={`p-2.5 rounded-full transition-all cursor-pointer border ${
+            className={`px-4 py-1.5 rounded-full text-[10px] font-sans border flex items-center gap-1 transition-all cursor-pointer ${
               isDark 
-                ? 'bg-slate-805 text-gray-400 hover:text-white border-slate-805 hover:bg-slate-700' 
-                : 'bg-white text-stone-500 hover:text-stone-800 border-[#ecdcb9]/60 hover:bg-stone-50 shadow-sm'
+                ? 'bg-slate-900 border-slate-800 hover:border-slate-705 text-gray-450 hover:text-white' 
+                : 'bg-white border-[#ecdcb9]/50 text-stone-550 hover:bg-stone-50 shadow-xs'
             }`}
+            title="重置呼吸计数与进度"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3 h-3" /> 重置调息
           </button>
-        ) : null}
-      </div>
-
-      {/* Guidance Dynamic box */}
-      <div className={`w-full max-w-sm mt-6 p-4 rounded-xl border font-sans ${
-        isDark ? 'bg-[#0f172a]/60 border-slate-800/80 text-gray-400' : 'bg-white border-[#ecdcb9] text-[#5c4033] shadow-sm'
-      }`}>
-        <p className={`text-xs font-black mb-1.5 flex items-center gap-1 ${isDark ? 'text-amber-500' : 'text-[#a67c52]'}`}>
-          {currentMethod.name} · 等比舒养指南
-        </p>
-        <p className="text-[11px] leading-relaxed text-justify">
-          {currentMethod.desc} 长期坚持每天在静室或无人惊扰处开展本套呼吸吞吐训练，可有效平衡呼吸节奏，降低气能消耗，调节神魂常泰。
-        </p>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
