@@ -34,6 +34,7 @@ export default function WhiteNoiseSlider({
   // Individual pre-preview play toggle
   const handleTogglePreview = (n: NoiseItem) => {
     audioEngine.ensureContext();
+    window.dispatchEvent(new CustomEvent('zensound-pause'));
     
     // Premium locking for premium noises
     if (n.id !== 'rain' && n.id !== 'wind' && !isPremiumUser) {
@@ -69,6 +70,7 @@ export default function WhiteNoiseSlider({
 
   const handleNoiseCheckboxToggle = (id: string) => {
     audioEngine.ensureContext();
+    window.dispatchEvent(new CustomEvent('zensound-pause'));
     const target = noises.find(n => n.id === id);
     if (!target) return;
 
@@ -92,6 +94,7 @@ export default function WhiteNoiseSlider({
 
   const handleSliderVolumeChange = (id: string, vol: number) => {
     audioEngine.ensureContext();
+    window.dispatchEvent(new CustomEvent('zensound-pause'));
     const target = noises.find(n => n.id === id);
     if (!target) return;
 

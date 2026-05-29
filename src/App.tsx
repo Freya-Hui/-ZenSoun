@@ -894,7 +894,7 @@ export default function App() {
               </div>
 
               {/* PERSISTENT FLOATING PLAYER ISLAND */}
-              {playbackState && activeTab !== 'synth' && (
+              {playbackState && (
                 <div className={`mx-3 mb-2 px-3 py-2 rounded-xl border flex items-center justify-between select-none shadow-lg z-40 relative backdrop-blur-md transition-all duration-300 ${
                   theme === 'night'
                     ? 'bg-slate-900/95 border-slate-800 text-gray-200'
@@ -968,13 +968,6 @@ export default function App() {
                     >
                       <SkipForward className="w-3.5 h-3.5" />
                     </button>
-                  </div>
-
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-500/15 overflow-hidden rounded-b-xl">
-                    <div 
-                      className="h-full bg-gradient-to-r from-sky-400 to-indigo-500 transition-all duration-300" 
-                      style={{ width: `${(playbackState.progress / playbackState.duration) * 100}%` }}
-                    />
                   </div>
                 </div>
               )}

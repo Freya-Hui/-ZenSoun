@@ -513,7 +513,7 @@ class AudioEngine {
     }
   }
 
-  playInstrumentNote(instrument: string, freq: number) {
+  playInstrumentNote(instrument: string, freq: number, volumeMultiplier = 1.0) {
     if (!this.ctx || !this.masterGain) return;
     
     const now = this.ctx.currentTime;
@@ -534,15 +534,15 @@ class AudioEngine {
       
       // Long Tibetan amplitude swell & decay
       gain1.gain.setValueAtTime(0, now);
-      gain1.gain.linearRampToValueAtTime(0.08, now + 0.5);
+      gain1.gain.linearRampToValueAtTime(0.08 * volumeMultiplier, now + 0.5);
       gain1.gain.exponentialRampToValueAtTime(0.0001, now + 5.0);
 
       gain2.gain.setValueAtTime(0, now);
-      gain2.gain.linearRampToValueAtTime(0.04, now + 0.8);
+      gain2.gain.linearRampToValueAtTime(0.04 * volumeMultiplier, now + 0.8);
       gain2.gain.exponentialRampToValueAtTime(0.0001, now + 4.0);
 
       gain3.gain.setValueAtTime(0, now);
-      gain3.gain.linearRampToValueAtTime(0.02, now + 0.4);
+      gain3.gain.linearRampToValueAtTime(0.02 * volumeMultiplier, now + 0.4);
       gain3.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
 
       // Simple vibrato (LFO)
@@ -586,7 +586,7 @@ class AudioEngine {
       filter.frequency.exponentialRampToValueAtTime(300, now + 0.8);
 
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.12, now + 0.02); // rapid pluck
+      gain.gain.linearRampToValueAtTime(0.12 * volumeMultiplier, now + 0.02); // rapid pluck
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
 
       // Feedback delay loop
@@ -621,11 +621,11 @@ class AudioEngine {
       overtone.frequency.setValueAtTime(freq * 3.33, now); // metallic chord
 
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.06, now + 0.01);
+      gain.gain.linearRampToValueAtTime(0.06 * volumeMultiplier, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
 
       gainOver.gain.setValueAtTime(0, now);
-      gainOver.gain.linearRampToValueAtTime(0.03, now + 0.01);
+      gainOver.gain.linearRampToValueAtTime(0.03 * volumeMultiplier, now + 0.01);
       gainOver.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
 
       osc.connect(gain);
@@ -649,7 +649,7 @@ class AudioEngine {
       osc.frequency.setValueAtTime(freq, now);
 
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.12, now + 0.08); // softer attack
+      gain.gain.linearRampToValueAtTime(0.12 * volumeMultiplier, now + 0.08); // softer attack
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
 
       osc.connect(gain);
@@ -686,14 +686,14 @@ class AudioEngine {
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(900, now);
 
-    // Quick thud envelope
+    // Quick thud envelope - SIGNIFICANTLY LOUDER for presence
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.40, now + 0.002); // immediate hit
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28); // hollow wood block fast slam
+    gain.gain.linearRampToValueAtTime(1.75, now + 0.002); // immediate hit (boosted for background music overlap)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35); // hollow wood block fast slam
 
-    // Transient envelope (extremely short click, 20ms)
+    // Transient envelope (extremely short click, 20ms) - LOUDER click
     transientGain.gain.setValueAtTime(0, now);
-    transientGain.gain.linearRampToValueAtTime(0.15, now + 0.001);
+    transientGain.gain.linearRampToValueAtTime(0.95, now + 0.001); // boosted click
     transientGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
 
     osc.connect(filter);
@@ -718,10 +718,10 @@ class AudioEngine {
 
     const now = this.ctx.currentTime;
     
-    // Combining 4 overtones for a deep rich acoustic harmony
+    // Combining 4 overtones for a deep rich acoustic harmony (boosted amplitudes for background music presence)
     const frequencies = [160, 240, 320, 640]; // Solfeggio 160Hz healing bar
-    const volumes = [0.28, 0.14, 0.09, 0.04];
-    const decays = [7.0, 5.5, 4.0, 2.5];
+    const volumes = [0.65, 0.35, 0.22, 0.12];
+    const decays = [8.0, 6.5, 5.0, 3.5];
 
     frequencies.forEach((f, idx) => {
       if (!this.ctx || !this.masterGain) return;

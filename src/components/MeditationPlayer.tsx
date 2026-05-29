@@ -32,7 +32,7 @@ class LocalBinauralGenerator {
     }
   }
 
-  start(offsetFreq: number, value: number = 0.5) {
+  start(offsetFreq: number, value: number = 0.5, volumeMultiplier: number = 0.5) {
     this.init();
     if (!this.ctx || !this.masterGain) return;
 
@@ -64,8 +64,8 @@ class LocalBinauralGenerator {
     this.gainL.gain.setValueAtTime(0.5, this.ctx.currentTime);
     this.gainR.gain.setValueAtTime(0.5, this.ctx.currentTime);
 
-    // The brainwave tone GainNode (masterGain) scales with slider value from 0 to peak state (e.g. 0.06 max)
-    const targetGain = 0.06 * value;
+    // The brainwave tone GainNode (masterGain) scales with slider value from 0 to peak state (e.g. 0.06 max) multiplied by volumeMultiplier
+    const targetGain = 0.06 * value * volumeMultiplier;
     this.masterGain.gain.setValueAtTime(targetGain, this.ctx.currentTime);
 
     // Connecting Left ear channel
@@ -85,7 +85,7 @@ class LocalBinauralGenerator {
     console.log(`[Binaural Wave Base Engine] Activated: Left Channel = ${baseCarrier}Hz, Right Channel = ${(baseCarrier + offsetFreq * value).toFixed(2)}Hz (Diff = ${(offsetFreq * value).toFixed(2)}Hz), Gain = ${targetGain}`);
   }
 
-  update(offsetFreq: number, value: number) {
+  update(offsetFreq: number, value: number, volumeMultiplier: number = 0.5) {
     this.init();
     if (!this.ctx) return;
 
@@ -95,7 +95,7 @@ class LocalBinauralGenerator {
 
     const baseCarrier = 200;
     const targetRightFreq = baseCarrier + (offsetFreq * value);
-    const targetGain = 0.06 * value;
+    const targetGain = 0.06 * value * volumeMultiplier;
 
     if (this.oscL && this.oscR && this.masterGain && this.gainL && this.gainR) {
       try {
@@ -104,10 +104,10 @@ class LocalBinauralGenerator {
         this.masterGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.15);
         console.log(`[Binaural Wave Base Engine] Adaptive Adjust: L=${baseCarrier}Hz, R=${targetRightFreq.toFixed(2)}Hz (Diff=${(offsetFreq*value).toFixed(2)}Hz), Gain=${targetGain.toFixed(4)}`);
       } catch (e) {
-        this.start(offsetFreq, value);
+        this.start(offsetFreq, value, volumeMultiplier);
       }
     } else {
-      this.start(offsetFreq, value);
+      this.start(offsetFreq, value, volumeMultiplier);
     }
   }
 
@@ -214,6 +214,8 @@ export default function MeditationPlayer({
   // Advanced Acoustic controls to solve background line noise (hum and static hiss)
   const [enableBrainwave, setEnableBrainwave] = useState<boolean>(true);
   const [enableAmbientMix, setEnableAmbientMix] = useState<boolean>(true);
+  const [brainwaveVolume, setBrainwaveVolume] = useState<number>(50); // 0 to 100, default 50
+  const [ambientVolume, setAmbientVolume] = useState<number>(50); // 0 to 100, default 50
 
   // Elegant fading symbol overlay state on top of player panel
   const [fadingSymbol, setFadingSymbol] = useState<{ type: 'play' | 'pause'; id: number } | null>(null);
@@ -424,7 +426,8 @@ export default function MeditationPlayer({
       const value = maxL > 1 ? (sliderLevel - 1) / (maxL - 1) : 1.0;
 
       // 3. Update the left and right Web Audio oscillators automatically
-      generator.update(targetOffset, value);
+      const volumeMultiplier = brainwaveVolume / 50;
+      generator.update(targetOffset, value, volumeMultiplier);
     } else {
       generator.stop();
     }
@@ -432,7 +435,7 @@ export default function MeditationPlayer({
     return () => {
       generator.stop();
     };
-  }, [isPlaying, enableBrainwave, selectedCategory, sliderLevel, categoryTracks]);
+  }, [isPlaying, enableBrainwave, selectedCategory, sliderLevel, categoryTracks, brainwaveVolume]);
 
   const progressTimerRef = useRef<any>(null);
   const countdownTimerRef = useRef<any>(null);
@@ -501,12 +504,16 @@ export default function MeditationPlayer({
         setIsLooping(nextM === 'single');
       }
     };
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
 
     window.addEventListener('zensound-toggle-play', handleToggle);
     window.addEventListener('zensound-next-track', handleNext);
     window.addEventListener('zensound-prev-track', handlePrev);
     window.addEventListener('zensound-remote-play', handleRemotePlay);
     window.addEventListener('zensound-remote-mode', handleRemoteMode);
+    window.addEventListener('zensound-pause', handlePause);
 
     return () => {
       window.removeEventListener('zensound-toggle-play', handleToggle);
@@ -514,6 +521,7 @@ export default function MeditationPlayer({
       window.removeEventListener('zensound-prev-track', handlePrev);
       window.removeEventListener('zensound-remote-play', handleRemotePlay);
       window.removeEventListener('zensound-remote-mode', handleRemoteMode);
+      window.removeEventListener('zensound-pause', handlePause);
     };
   }, [isPlaying, activeTrack, sliderLevel, selectedCategory, isPremiumUser, playMode, isLooping]);
 
@@ -670,38 +678,43 @@ export default function MeditationPlayer({
   // Trigger ambient background noises automatically on music play based on target purpose and user subscription tier
   useEffect(() => {
     if (isPlaying && enableAmbientMix) {
+      // Scale down the ambient volume so that the absolute maximum passed to the engine is 5 (which represents 5%)
+      const baseScale = ambientVolume / 100; // 0 to 1
+      const maxAllowedPercent = 5; // Capped at 5% maximum volume
+      const targetMax = baseScale * maxAllowedPercent; // ranges 0 to 5
+
       if (activeTrack.purpose === 'sleep') {
         if (isPremiumUser) {
-          audioEngine.setNoiseVolume('waves', true, 55);
-          audioEngine.setNoiseVolume('rain', true, 25);
+          audioEngine.setNoiseVolume('waves', true, targetMax * 1.0); // max 5%
+          audioEngine.setNoiseVolume('rain', true, targetMax * 0.45); // max 2.25%
         } else {
-          audioEngine.setNoiseVolume('rain', true, 25);
+          audioEngine.setNoiseVolume('rain', true, targetMax * 0.45);
         }
       } else if (activeTrack.purpose === 'focus') {
         if (isPremiumUser) {
-          audioEngine.setNoiseVolume('wind', true, 40);
+          audioEngine.setNoiseVolume('wind', true, targetMax * 0.8);
         } else {
-          audioEngine.setNoiseVolume('rain', true, 15);
+          audioEngine.setNoiseVolume('rain', true, targetMax * 0.3);
         }
       } else if (activeTrack.purpose === 'rest') {
         if (isPremiumUser) {
-          audioEngine.setNoiseVolume('wind', true, 35);
-          audioEngine.setNoiseVolume('rain', true, 30);
+          audioEngine.setNoiseVolume('wind', true, targetMax * 0.7);
+          audioEngine.setNoiseVolume('rain', true, targetMax * 0.6);
         } else {
-          audioEngine.setNoiseVolume('rain', true, 30);
+          audioEngine.setNoiseVolume('rain', true, targetMax * 0.6);
         }
       } else if (activeTrack.purpose === 'energy') {
         if (isPremiumUser) {
-          audioEngine.setNoiseVolume('campfire', true, 20);
-          audioEngine.setNoiseVolume('wind', true, 15);
+          audioEngine.setNoiseVolume('campfire', true, targetMax * 0.4);
+          audioEngine.setNoiseVolume('wind', true, targetMax * 0.3);
         } else {
-          audioEngine.setNoiseVolume('rain', true, 20);
+          audioEngine.setNoiseVolume('rain', true, targetMax * 0.4);
         }
       } else if (activeTrack.purpose === 'wuyin') {
         if (isPremiumUser) {
-          audioEngine.setNoiseVolume('waves', true, 30);
+          audioEngine.setNoiseVolume('waves', true, targetMax * 0.6);
         } else {
-          audioEngine.setNoiseVolume('rain', true, 15);
+          audioEngine.setNoiseVolume('rain', true, targetMax * 0.3);
         }
       }
     } else {
@@ -711,7 +724,7 @@ export default function MeditationPlayer({
       audioEngine.setNoiseVolume('wind', false, 0);
       audioEngine.setNoiseVolume('campfire', false, 0);
     }
-  }, [isPlaying, activeTrack, isPremiumUser, enableAmbientMix]);
+  }, [isPlaying, activeTrack, isPremiumUser, enableAmbientMix, ambientVolume]);
 
   const handlePlayPause = () => {
     audioEngine.ensureContext();
@@ -882,54 +895,14 @@ export default function MeditationPlayer({
       {/* 1. VISUALIZER PANEL FRAME */}
       <div 
         onClick={() => handlePlayPause()}
-        className={`relative w-full h-[175px] rounded-2xl overflow-hidden border transition-all shadow-xl flex flex-col justify-between p-4 flex-none cursor-pointer ${
+        className={`relative w-full h-[115px] rounded-2xl overflow-hidden border transition-all shadow-xl flex flex-col justify-center p-4 flex-none cursor-pointer ${
           isDark 
             ? 'bg-gradient-to-b from-[#0c1629] to-[#040710] border-slate-900' 
             : 'bg-gradient-to-b from-stone-100 to-white border-stone-200'
         }`} id="player_panel">
-        
-        {/* Abs background starfield layout */}
-        <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-400 via-transparent to-transparent bg-cover" />
-
-        {/* Dynamic canvas visual nodes rendering */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          <AudioVisualizer 
-            isPlaying={isPlaying} 
-            color={isDark ? "rgba(217, 119, 6, 0.35)" : "rgba(166, 124, 82, 0.3)"} 
-            waveCount={3} 
-            speedMultiplier={sliderLevel * 0.7} 
-          />
-        </div>
-
-        {/* Play/Pause Fading Symbol Overlay */}
-        <AnimatePresence>
-          {fadingSymbol && (
-            <motion.div
-              key={fadingSymbol.id}
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: [0, 1, 1, 0], scale: [0.6, 1, 1.15, 1.3] }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.7, times: [0, 0.25, 0.65, 1], ease: "easeOut" }}
-              onAnimationComplete={() => {
-                if (fadingSymbol?.id === fadeCountRef.current) {
-                  setFadingSymbol(null);
-                }
-              }}
-              className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none"
-            >
-              <div className="p-4 rounded-full bg-black/40 backdrop-blur-xs border border-white/20 text-white shadow-2xl">
-                {fadingSymbol.type === 'play' ? (
-                  <Play className="w-10 h-10 fill-current text-white translate-x-0.5" />
-                ) : (
-                  <Pause className="w-10 h-10 text-white" />
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Header tags inside frame */}
-        <div className="relative flex justify-between items-center z-10 w-full font-sans" onClick={(e) => e.stopPropagation()}>
+        <div className="relative flex justify-between items-center z-10 w-full font-sans mb-1" onClick={(e) => e.stopPropagation()}>
           <span className={`px-2.5 py-0.5 rounded-full border text-[9.5px] font-bold uppercase tracking-wider flex items-center gap-1 ${
             isDark 
               ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
@@ -948,7 +921,7 @@ export default function MeditationPlayer({
                 ? isDark
                   ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow shadow-amber-500/10'
                   : 'bg-amber-100 text-amber-700 border border-amber-300 shadow-sm'
-                : isDark ? 'bg-slate-9050 text-gray-500 border border-slate-800' : 'bg-stone-100 text-stone-400 border border-stone-200'
+                : isDark ? 'bg-slate-950 text-gray-500 border border-slate-800' : 'bg-stone-100 text-stone-400 border border-stone-200'
             }`}
           >
             FLAC 高拟真
@@ -956,130 +929,23 @@ export default function MeditationPlayer({
         </div>
 
         {/* Current title info */}
-        <div className="relative text-center z-10 select-none pb-1">
+        <div className="relative text-center z-10 select-none">
           <h2 className={`text-sm font-black tracking-wide font-sans truncate px-3 ${
             isDark ? 'text-gray-100' : 'text-stone-850'
           }`}>
             {activeTrack.title}
           </h2>
-          <p className={`text-[10.5px] font-sans mt-1 leading-relaxed px-5 line-clamp-1 ${
+          <p className={`text-[10.5px] font-sans mt-0.5 leading-relaxed px-5 line-clamp-1 ${
             isDark ? 'text-gray-400' : 'text-stone-500'
           }`}>
             {activeTrack.desc}
           </p>
         </div>
-
-        {/* Timelines and progress bar */}
-        <div className="relative z-10 w-full flex flex-col" id="player_timeline" onClick={(e) => e.stopPropagation()}>
-          <div className="flex justify-between items-center text-[9px] font-mono text-gray-500 mb-1">
-            <span>{formatTime(playProgress)}</span>
-            <span>{formatTime(activeTrack.duration)}</span>
-          </div>
-
-          <div className={`w-full h-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-800/85' : 'bg-stone-200'}`}>
-            <div 
-              className="h-full bg-gradient-to-r from-amber-400 to-[#a67c52] rounded-full transition-all duration-300" 
-              style={{ width: `${(playProgress / activeTrack.duration) * 100}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* PROFESSIONAL CHAMPAGNE GOLD CONTROLS BAR */}
-      <div className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-        isDark ? 'bg-slate-950/50 border-slate-900 shadow-inner' : 'bg-white border-stone-200/80 shadow-xs'
-      }`} id="tactile_core_playback_controls">
-        
-        {/* Toggle IsLooping (单曲/列表循环) */}
-        <button
-          onClick={() => {
-            const nextLoop = !isLooping;
-            setIsLooping(nextLoop);
-            setPlayMode(nextLoop ? 'single' : 'loop');
-            
-            // Sync up to App or play mode dispatch natively
-            window.dispatchEvent(new CustomEvent('zensound-remote-mode', {
-              detail: { mode: nextLoop ? 'single' : 'loop' }
-            }));
-          }}
-          className={`p-2 rounded-xl cursor-pointer transition-all flex items-center gap-1.5 text-[10px] font-bold ${
-            isLooping 
-              ? 'bg-[#a67c52]/15 text-amber-500 border border-amber-500/30' 
-              : isDark ? 'bg-slate-900/40 text-gray-400 border border-slate-800/60' : 'bg-stone-50 text-stone-600 border border-stone-200/65'
-          }`}
-          title={isLooping ? "当前：单曲守护无缝循环" : "当前：列表顺序徐徐流转"}
-        >
-          {isLooping ? (
-            <>
-              <Repeat className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-              <span className="text-amber-500 font-extrabold">单曲循环</span>
-            </>
-          ) : (
-            <>
-              <Repeat className="w-3.5 h-3.5 opacity-50" />
-              <span>顺序播放</span>
-            </>
-          )}
-        </button>
-
-        {/* Previous, Play/Pause, Next controls */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => handlePrevTrack()}
-            className={`p-2.5 rounded-full cursor-pointer transition-all active:scale-95 ${
-              isDark ? 'hover:bg-slate-900 text-gray-300' : 'hover:bg-[#a67c52]/10 text-[#5c4033]'
-            }`}
-            title="上一首"
-          >
-            <SkipBack className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => handlePlayPause()}
-            className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-md ${
-              isDark 
-                ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-450 text-white shadow-amber-900/30' 
-                : 'bg-[#a67c52] hover:bg-[#8e6b46] text-white shadow-[#a67c52]/20'
-            }`}
-            title={isPlaying ? "暂停" : "激活声频"}
-          >
-            {isPlaying ? (
-              <Pause className="w-4.5 h-4.5 fill-white text-white" />
-            ) : (
-              <Play className="w-4.5 h-4.5 fill-white text-white ml-0.5" />
-            )}
-          </button>
-
-          <button
-            onClick={() => handleNextTrack()}
-            className={`p-2.5 rounded-full cursor-pointer transition-all active:scale-95 ${
-              isDark ? 'hover:bg-slate-900 text-gray-300' : 'hover:bg-[#a67c52]/10 text-[#5c4033]'
-            }`}
-            title="下一首"
-          >
-            <SkipForward className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* View Playlist / Library button */}
-        <button
-          onClick={() => {
-            setLibraryFilterText('');
-            setShowFullLibraryModal(true);
-          }}
-          className={`p-2 rounded-xl cursor-pointer transition-all flex items-center gap-1 text-[10px] font-bold ${
-            isDark ? 'bg-slate-900/40 text-gray-400 hover:text-gray-300 hover:bg-slate-900' : 'bg-[#a67c52]/10 text-[#a67c52] hover:bg-[#a67c52]/15'
-          }`}
-          title="打开曲目全库"
-        >
-          <ListMusic className="w-3.5 h-3.5 text-amber-500" />
-          <span className={isDark ? "text-gray-400 font-bold" : "text-[#a67c52] font-bold"}>静心雅集</span>
-        </button>
       </div>
 
       {/* STANDARD FREE ACCORDANCE COUNTDOWN BANNER */}
       {!isPremiumUser && isPlaying && (
-        <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/25 flex items-center justify-between text-[10.5px] text-orange-500 font-sans">
+        <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/25 flex items-center justify-between text-[10.5px] text-orange-500 font-sans mt-3">
           <span>⚠️ 您的限免听本限流模式已开启</span>
           <span className="font-mono font-bold bg-orange-500/15 px-1.5 py-0.5 rounded border border-orange-500/20">
             限时 {freeTimerLeft} 秒
@@ -1240,55 +1106,99 @@ export default function MeditationPlayer({
           <span className={`text-[11px] font-extrabold flex items-center gap-1.5 ${
             isDark ? 'text-amber-400' : 'text-amber-700'
           }`}>
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-spin" /> 耳腔低噪与声学深度调节 (释疑)
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-spin" /> 深度调节
           </span>
         </div>
 
         <div className="flex flex-col gap-2.5 text-sans">
           {/* Toggle Brainwave beats drone hum */}
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850 transition-all select-none">
-            <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
-              <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
-                左右声道脑波共鸣 (Binaural Beats)
-              </span>
-              <span className="text-[9px] text-gray-500 font-sans leading-tight">
-                低频双耳脉冲物理共鸣，感觉像深沉的耳鸣或微风长鸣气流音 (Binaural Hum)
-              </span>
+          <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850/20 transition-all select-none">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
+                <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
+                  能量共鸣
+                </span>
+                <span className="text-[9px] text-gray-500 font-sans leading-tight">
+                  低频双耳脉冲物理共鸣，感觉像深沉的耳鸣或微风长鸣气流音 (Binaural Hum)
+                </span>
+              </div>
+              
+              <button
+                onClick={() => setEnableBrainwave(!enableBrainwave)}
+                className={`w-9 h-5 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
+                  enableBrainwave ? 'bg-amber-500' : 'bg-slate-300/35'
+                }`}
+              >
+                <div className={`h-4 w-4 rounded-full bg-white transition-all shadow-sm transform duration-300 ${
+                  enableBrainwave ? 'translate-x-4' : 'translate-x-0'
+                }`} />
+              </button>
             </div>
-            
-            <button
-              onClick={() => setEnableBrainwave(!enableBrainwave)}
-              className={`w-9 h-5 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
-                enableBrainwave ? 'bg-amber-500' : 'bg-slate-300/35'
-              }`}
-            >
-              <div className={`h-4 w-4 rounded-full bg-white transition-all shadow-sm transform duration-300 ${
-                enableBrainwave ? 'translate-x-4' : 'translate-x-0'
-              }`} />
-            </button>
+
+            {enableBrainwave && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="flex items-center gap-2 mt-1 px-1 border-t border-dashed border-slate-500/20 pt-1.5"
+              >
+                <VolumeX className="w-3 h-3 text-gray-400" />
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={brainwaveVolume}
+                  onChange={(e) => setBrainwaveVolume(Number(e.target.value))}
+                  className="w-full h-1 bg-slate-250 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none"
+                />
+                <Volume2 className="w-3 h-3 text-amber-500" />
+                <span className="text-[9.5px] font-mono text-gray-400 w-8 text-right">{brainwaveVolume}%</span>
+              </motion.div>
+            )}
           </div>
 
           {/* Toggle Automatic Ambient Nature Noises */}
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850 transition-all select-none">
-            <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
-              <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
-                智能天气环境背景音混入 (Auto Ambient Mix)
-              </span>
-              <span className="text-[9px] text-gray-500 font-sans leading-tight">
-                播放时伴随叠加海浪、春雨微风等粉红/白噪音天气层，类似沙沙的背景底噪
-              </span>
+          <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-slate-900/10 border border-transparent hover:border-slate-850/20 transition-all select-none">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col text-left gap-0.5 max-w-[240px]">
+                <span className={`text-[10.5px] font-extrabold ${isDark ? 'text-gray-250' : 'text-stone-800'}`}>
+                  环境音
+                </span>
+                <span className="text-[9px] text-gray-500 font-sans leading-tight">
+                  播放时伴随叠加海浪、春雨微风等粉红/白噪音天气层，类似沙沙 the 背景底噪
+                </span>
+              </div>
+              
+              <button
+                onClick={() => setEnableAmbientMix(!enableAmbientMix)}
+                className={`w-9 h-5 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
+                  enableAmbientMix ? 'bg-amber-500' : 'bg-slate-300/35'
+                }`}
+              >
+                <div className={`h-4 w-4 rounded-full bg-white transition-all shadow-sm transform duration-350 ${
+                  enableAmbientMix ? 'translate-x-4' : 'translate-x-0'
+                }`} />
+              </button>
             </div>
-            
-            <button
-              onClick={() => setEnableAmbientMix(!enableAmbientMix)}
-              className={`w-9 h-5 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
-                enableAmbientMix ? 'bg-amber-500' : 'bg-slate-300/35'
-              }`}
-            >
-              <div className={`h-4 w-4 rounded-full bg-white transition-all shadow-sm transform duration-350 ${
-                enableAmbientMix ? 'translate-x-4' : 'translate-x-0'
-              }`} />
-            </button>
+
+            {enableAmbientMix && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="flex items-center gap-2 mt-1 px-1 border-t border-dashed border-slate-500/20 pt-1.5"
+              >
+                <VolumeX className="w-3 h-3 text-gray-400" />
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={ambientVolume}
+                  onChange={(e) => setAmbientVolume(Number(e.target.value))}
+                  className="w-full h-1 bg-slate-250 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none"
+                />
+                <Volume2 className="w-3 h-3 text-amber-500" />
+                <span className="text-[9.5px] font-mono text-gray-400 w-8 text-right">{ambientVolume}%</span>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

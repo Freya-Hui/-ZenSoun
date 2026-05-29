@@ -167,6 +167,7 @@ export default function CustomSynthesizer({
                 key={pKey}
                 onClick={() => {
                   audioEngine.ensureContext();
+                  window.dispatchEvent(new CustomEvent('zensound-pause'));
                   if (selectedPurpose === pKey) {
                     setIsBinauralActive(!isBinauralActive);
                   } else {
@@ -177,7 +178,7 @@ export default function CustomSynthesizer({
                 className={`py-2 px-0.5 rounded-xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 relative ${
                   isSelected
                     ? isDark
-                      ? 'bg-sky-520/20 border-sky-400 text-sky-300 font-extrabold shadow-sm'
+                      ? 'bg-[#1e293b] border-[#38bdf8] text-sky-300 font-extrabold shadow-sm'
                       : 'bg-[#a67c52] border-[#a67c52] text-white font-black shadow-sm'
                     : isDark
                       ? 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'
@@ -218,6 +219,7 @@ export default function CustomSynthesizer({
               value={binauralVolume}
               onChange={(e) => {
                 audioEngine.ensureContext();
+                window.dispatchEvent(new CustomEvent('zensound-pause'));
                 setBinauralVolume(Number(e.target.value));
                 if (!isBinauralActive) {
                   setIsBinauralActive(true);

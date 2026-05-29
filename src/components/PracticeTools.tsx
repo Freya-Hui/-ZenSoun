@@ -188,6 +188,7 @@ function WoodenFishView({
   };
 
   const handleStrike = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Practice tools can exist and play together with meditation music
     audioEngine.strikeWoodenFish();
     setTotalCount(prev => prev + 1);
     setIsStriking(true);
@@ -452,6 +453,7 @@ function SingingBowlView({ isDark }: { isDark: boolean }) {
 
   // Handle striking
   const handleStrike = () => {
+    // Practice tools can exist and play together with meditation music
     audioEngine.strikeSingingBowl();
     setResonanceLevel(100);
     setIsPlaying(true);
@@ -519,16 +521,6 @@ function SingingBowlView({ isDark }: { isDark: boolean }) {
         </div>
       </div>
 
-      {/* Hammer visual guide */}
-      <div className="mt-8 flex gap-3">
-        <button
-          onClick={handleStrike}
-          className="px-6 py-2.5 rounded-full bg-gradient-to-r from-yellow-600 to-amber-700 hover:from-yellow-500 hover:to-amber-600 text-white font-medium text-xs shadow-lg flex items-center gap-1.5 transition-all cursor-pointer"
-        >
-          执槌击磬
-        </button>
-      </div>
-
       {/* Science explanation details */}
       <div className={`w-full max-w-sm mt-8 p-4 rounded-xl border ${
         isDark ? 'bg-[#0f172a]/60 border-slate-800/80 text-gray-400' : 'bg-white border-[#ecdcb9]/50 text-[#5c4033] shadow-sm'
@@ -537,7 +529,7 @@ function SingingBowlView({ isDark }: { isDark: boolean }) {
           <Info className="w-4 h-4 text-sky-400 mt-0.5 shrink-0" />
           <div className="text-xs text-gray-400 leading-relaxed font-sans">
             <span className="text-gray-200 font-semibold block mb-1">愈疗共振科学</span>
-            西藏颂钵敲击后能产生悠长空鸣的微调泛音音圈，在身心深处引发“温和共鸣”，促使精神由焦虑紧绷瞬间向舒缓放松状态转化。常用于减压释扰、助眠理气、安抚焦躁心绪。
+            颂钵敲击后能产生悠长空鸣的微调泛音音圈，在身心深处引发“温和共鸣”，促使精神由焦虑紧绷瞬间向舒缓放松状态转化。常用于减压释扰、助眠理气、安抚焦躁心绪。
           </div>
         </div>
       </div>
@@ -604,6 +596,8 @@ function BreathingView({ isDark }: { isDark: boolean }) {
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(steps[0].duration);
   const [completedCycles, setCompletedCycles] = useState(0);
+  const [targetCycles, setTargetCycles] = useState<number>(5); // Default 5 rounds, -1 represent long meditation
+  const [enableSimultaneousMusic, setEnableSimultaneousMusic] = useState<boolean>(true); // Shared audio channel
   const timerRef = useRef<any>(null);
 
   const activeStep = steps[currentStepIdx];
@@ -634,29 +628,35 @@ function BreathingView({ isDark }: { isDark: boolean }) {
     if (isRunning) {
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev <= 1) {
-            // switch to next step
-            let nextStepIdx = 0;
-            setCurrentStepIdx(oldIdx => {
-              const nextIdx = (oldIdx + 1) % steps.length;
-              nextStepIdx = nextIdx;
-              if (nextIdx === 0) {
-                setCompletedCycles(c => c + 1);
+          if (prev <= 0) {
+            // Let countdown hit 0 before transition
+            let nextStepIdx = (currentStepIdx + 1) % steps.length;
+            
+            // Increment completed cycles
+            if (nextStepIdx === 0) {
+              const nextCycles = completedCycles + 1;
+              if (targetCycles > 0 && nextCycles >= targetCycles) {
+                // Pre-planned meditation rounds finished
+                setIsRunning(false);
+                audioEngine.playInstrumentNote('bell', 220.00, 8.0);
+                return 0;
               }
-              const nextStep = steps[nextIdx];
-              
-              // Play a light audio guide
-              if (nextStep.action === 'inhale') {
-                audioEngine.playInstrumentNote('harp', 196.00); // Sol note
-              } else if (nextStep.action === 'hold') {
-                audioEngine.playInstrumentNote('bell', 329.63); // Mi note
-              } else {
-                audioEngine.playInstrumentNote('bowl', 220.00); // La note
-              }
+              setCompletedCycles(nextCycles);
+            }
 
-              return nextIdx;
-            });
-            return steps[nextStepIdx].duration;
+            setCurrentStepIdx(nextStepIdx);
+            const nextStep = steps[nextStepIdx];
+            
+            // Highly audible guidances (boosted volumeMultiplier = 7.5 for great presence with music)
+            if (nextStep.action === 'inhale') {
+              audioEngine.playInstrumentNote('harp', 196.00, 7.5);
+            } else if (nextStep.action === 'hold') {
+              audioEngine.playInstrumentNote('bell', 329.63, 7.5);
+            } else {
+              audioEngine.playInstrumentNote('bowl', 220.00, 7.5);
+            }
+
+            return nextStep.duration;
           }
           return prev - 1;
         });
@@ -670,11 +670,12 @@ function BreathingView({ isDark }: { isDark: boolean }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isRunning, activeMethodIdx, currentStepIdx]);
+  }, [isRunning, activeMethodIdx, currentStepIdx, completedCycles, targetCycles]);
 
   const toggleBreath = () => {
     if (!isRunning) {
-      audioEngine.playInstrumentNote('harp', 220); // Gong strike
+      // Practice tools can exist and play together with meditation music
+      audioEngine.playInstrumentNote('harp', 220, 7.5); // Louder start sound
       setIsRunning(true);
       setCurrentStepIdx(0);
       setTimeLeft(steps[0].duration);
@@ -780,6 +781,74 @@ function BreathingView({ isDark }: { isDark: boolean }) {
         >
           <ChevronRight className="w-4 h-4" />
         </button>
+      </div>
+
+      {/* Breathing Target Preset Selector & Optional Blending Channel */}
+      <div className={`w-full max-w-sm mt-5 p-3 rounded-xl border flex flex-col gap-2.5 font-sans ${
+        isDark ? 'bg-slate-950/40 border-slate-850' : 'bg-white border-stone-200/85 shadow-sm'
+      }`}>
+        <div className="flex items-center justify-between">
+          <span className={`text-[10px] font-black ${isDark ? 'text-gray-300' : 'text-stone-800'}`}>
+            调息轮数预设
+          </span>
+          <span className="text-[9px] font-mono text-gray-500 font-bold">
+            {targetCycles === -1 ? '长时间冥想' : `拟定 ${targetCycles} 轮`}
+          </span>
+        </div>
+        
+        <div className="grid grid-cols-5 gap-1.5">
+          {[3, 5, 10, 15, -1].map((val) => {
+            const isSel = targetCycles === val;
+            return (
+              <button
+                key={val}
+                onClick={() => {
+                  setTargetCycles(val);
+                  setCompletedCycles(0);
+                }}
+                className={`py-1 rounded-lg text-[9.5px] font-extrabold cursor-pointer transition-all ${
+                  isSel
+                    ? isDark
+                      ? 'bg-amber-500 text-slate-950 font-black'
+                      : 'bg-[#a67c52] text-white font-black'
+                    : isDark
+                      ? 'bg-slate-900 border border-slate-800 text-gray-400 hover:text-white'
+                      : 'bg-stone-50 border border-stone-150 text-stone-650 hover:bg-stone-100'
+                }`}
+              >
+                {val === -1 ? '无限' : `${val}轮`}
+              </button>
+            );
+          })}
+        </div>
+
+        {targetCycles === -1 && (
+          <div className="flex items-center justify-between mt-1 px-1 pt-2 border-t border-dashed border-slate-500/20">
+            <span className={`text-[9.5px] font-semibold leading-relaxed ${isDark ? 'text-gray-400' : 'text-stone-600'}`}>
+              长时间冥想：同时开启背景音乐与呼吸提示音
+            </span>
+            <button
+              onClick={() => {
+                const nextVal = !enableSimultaneousMusic;
+                setEnableSimultaneousMusic(nextVal);
+                if (isRunning) {
+                  if (nextVal) {
+                    window.dispatchEvent(new CustomEvent('zensound-toggle-play'));
+                  } else {
+                    window.dispatchEvent(new CustomEvent('zensound-pause'));
+                  }
+                }
+              }}
+              className={`w-8 h-4 rounded-full p-0.5 transition-all focus:outline-none cursor-pointer duration-300 ${
+                enableSimultaneousMusic ? 'bg-amber-500' : 'bg-slate-300/35'
+              }`}
+            >
+              <div className={`h-3 w-3 rounded-full bg-white transition-all shadow-sm transform duration-300 ${
+                enableSimultaneousMusic ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* SWIPE / DOT INDICATORS (…): 代表切换调息选项 */}

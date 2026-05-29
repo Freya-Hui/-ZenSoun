@@ -381,6 +381,7 @@ export default function MelodySeqCreator({
   // Trigger manual start/stop inside Random Generator
   const handleToggleRandomGen = () => {
     audioEngine.ensureContext();
+    window.dispatchEvent(new CustomEvent('zensound-pause'));
     if (!isPremiumUser) {
       onOpenSubscribeModal();
       return;
@@ -396,6 +397,7 @@ export default function MelodySeqCreator({
 
   const handleToggleCustomPitchLoop = () => {
     audioEngine.ensureContext();
+    window.dispatchEvent(new CustomEvent('zensound-pause'));
     if (!isPremiumUser) {
       onOpenSubscribeModal();
       return;
@@ -425,6 +427,7 @@ export default function MelodySeqCreator({
 
   const handleToggleSequencer = () => {
     audioEngine.ensureContext();
+    window.dispatchEvent(new CustomEvent('zensound-pause'));
     if (!isPremiumUser) {
       onOpenSubscribeModal();
       return;
@@ -488,6 +491,7 @@ export default function MelodySeqCreator({
   // Select on creation -> Clicking toggles play, first-click loads
   const handleSelectUserCreation = (creation: UserCreation) => {
     audioEngine.ensureContext();
+    window.dispatchEvent(new CustomEvent('zensound-pause'));
     
     // Stop random wandering
     setIsMelodyActive(false);

@@ -169,7 +169,7 @@ export default function CommunityCenter({
                         </span>
                       </div>
                       <p className={`text-[10px] font-sans line-clamp-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>
-                        主奏: {post.recipe.melodyInstrument === 'bowl' ? '西藏颂钵' : post.recipe.melodyInstrument === 'harp' ? '愈疗竖琴' : post.recipe.melodyInstrument === 'bell' ? '星铃' : '古典钢琴'} • {post.recipe.purposeLabel}功效
+                        主奏: {post.recipe.melodyInstrument === 'bowl' ? '颂钵' : post.recipe.melodyInstrument === 'harp' ? '愈疗竖琴' : post.recipe.melodyInstrument === 'bell' ? '星铃' : '古典钢琴'} • {post.recipe.purposeLabel}功效
                       </p>
                     </div>
 
