@@ -165,31 +165,31 @@ interface PlayerProps {
 
 export const tracksData: Record<'sleep' | 'focus' | 'rest' | 'energy' | 'wuyin', Track[]> = {
   sleep: [
-    { id: 'sleep_1', title: '极速入梦 • 舒缓摇篮潮汐', desc: '轻柔海浪呼吸共鸣，帮助缓和肢体张力势能，引导快速进入睡眠准备。', duration: 420, purpose: 'sleep', isPremium: false, intensityLabel: '温和缓流 (1级)', audioKeyword: 'bowl' },
-    { id: 'sleep_2', title: '深沉归宿 • 星海深潜磁场', desc: '虚空安神声疗，解离冗余思绪纠缠，引领深沉无梦长眠。', duration: 600, purpose: 'sleep', isPremium: false, intensityLabel: '沉浸深空 (2级)', audioKeyword: 'bowl' },
-    { id: 'sleep_3', title: '无漏冥安 • 寂灭万籁清音', desc: '纯透磬音，消除深夜多虑，抚平深夜郁闷与情绪惊扰。', duration: 900, purpose: 'sleep', isPremium: true, intensityLabel: '极静万物 (3级)', audioKeyword: 'bowl' }
+    { id: 'sleep_1', title: '极速入梦 • 舒缓摇篮潮汐', desc: '轻柔海浪呼吸共鸣，帮助缓和肢体张力势能，引导快速进入睡眠准备。', duration: 420, purpose: 'sleep', isPremium: false, intensityLabel: '温和缓流 (1级)', audioKeyword: 'bowl', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+    { id: 'sleep_2', title: '深沉归宿 • 星海深潜磁场', desc: '虚空安神声疗，解离冗余思绪纠缠，引领深沉无梦长眠。', duration: 600, purpose: 'sleep', isPremium: false, intensityLabel: '沉浸深空 (2级)', audioKeyword: 'bowl', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+    { id: 'sleep_3', title: '无漏冥安 • 寂灭万籁清音', desc: '纯透磬音，消除深夜多虑，抚平深夜郁闷与情绪惊扰。', duration: 900, purpose: 'sleep', isPremium: true, intensityLabel: '极静万物 (3级)', audioKeyword: 'bowl', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' }
   ],
   focus: [
-    { id: 'focus_1', title: '阳春拂林 • 晨光鸟朝凝神', desc: '春林山泉鸟语微声，舒缓思维紧缩状态，温和辅助高品质阅读。', duration: 300, purpose: 'focus', isPremium: false, intensityLabel: '浅度清脑 (1级)', audioKeyword: 'piano' },
-    { id: 'focus_2', title: '安稳坚实 • 古磬贯注心流', desc: '清亮馨罄轻缓慢敲，收拢分散的白日念头，稳定工作学习聚焦度。', duration: 480, purpose: 'focus', isPremium: true, intensityLabel: '深度聚焦 (2级)', audioKeyword: 'bell' },
-    { id: 'focus_3', title: '心源灵动 • 原野星辉听涛', desc: '空旷而悠长的纯音粒子，阻绝周遭环境纷杂响声，大幅拉满脑力运行效率。', duration: 600, purpose: 'focus', isPremium: true, intensityLabel: '无垢思维 (3级)', audioKeyword: 'harp' }
+    { id: 'focus_1', title: '阳春拂林 • 晨光鸟朝凝神', desc: '春林山泉鸟语微声，舒缓思维紧缩状态，温和辅助高品质阅读。', duration: 300, purpose: 'focus', isPremium: false, intensityLabel: '浅度清脑 (1级)', audioKeyword: 'piano', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
+    { id: 'focus_2', title: '安稳坚实 • 古磬贯注心流', desc: '清亮馨罄轻缓慢敲，收拢分散的白日念头，稳定工作学习聚焦度。', duration: 480, purpose: 'focus', isPremium: true, intensityLabel: '深度聚焦 (2级)', audioKeyword: 'bell', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' },
+    { id: 'focus_3', title: '心源灵动 • 原野星辉听涛', desc: '空旷而悠长的纯音粒子，阻绝周遭环境纷杂响声，大幅拉满脑力运行效率。', duration: 600, purpose: 'focus', isPremium: true, intensityLabel: '无垢思维 (3级)', audioKeyword: 'harp', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3' }
   ],
   rest: [
-    { id: 'rest_1', title: '幽谷清溪 • 息气行随自调', desc: '潺潺山泉融汇清纯和音，深层协调每一次呼气与吸气的悠长平衡。', duration: 360, purpose: 'rest', isPremium: false, intensityLabel: '自然呼吸 (1级)', audioKeyword: 'harp' },
-    { id: 'rest_2', title: '慈怀宽柔 • 抚慰释躁音轴', desc: '温厚竖琴缓缓舒拨，包容消退日常焦虑与抑郁胸闷感。', duration: 450, purpose: 'rest', isPremium: false, intensityLabel: '情绪松弛 (2级)', audioKeyword: 'piano' },
-    { id: 'rest_3', title: '雨后新原 • 乾坤神安放空', desc: '空灵铜磬慢鸣，抚平日常重荷压力，使精气神完美空灵轻快。', duration: 540, purpose: 'rest', isPremium: true, intensityLabel: '虚怀气舒 (3级)', audioKeyword: 'bowl' }
+    { id: 'rest_1', title: '幽谷清溪 • 息气行随自调', desc: '潺潺山泉融汇清纯和音，深层协调每一次呼气与吸气的悠长平衡。', duration: 360, purpose: 'rest', isPremium: false, intensityLabel: '自然呼吸 (1级)', audioKeyword: 'harp', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3' },
+    { id: 'rest_2', title: '慈怀宽柔 • 抚慰释躁音轴', desc: '温厚竖琴缓缓舒拨，包容消退日常焦虑与抑郁胸闷感。', duration: 450, purpose: 'rest', isPremium: false, intensityLabel: '情绪松弛 (2级)', audioKeyword: 'piano', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' },
+    { id: 'rest_3', title: '雨后新原 • 乾坤神安放空', desc: '空灵铜磬慢鸣，抚平日常重荷压力，使精气神完美空灵轻快。', duration: 540, purpose: 'rest', isPremium: true, intensityLabel: '虚怀气舒 (3级)', audioKeyword: 'bowl', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3' }
   ],
   energy: [
-    { id: 'energy_1', title: '阴霾撕裂 • 晨光和煦沐浴', desc: '和风煦煦搭配高音微振，拂掉肢体沉闷感，唤回肌肉原本温热。', duration: 300, purpose: 'energy', isPremium: false, intensityLabel: '微温驱沉 (1级)', audioKeyword: 'bell' },
-    { id: 'energy_2', title: '竹海洗炼 • 澄澈神智充能', desc: '竹浪微拂伴随欢快星铃，荡涤疲滞困顿并清凉提神。', duration: 420, purpose: 'energy', isPremium: true, intensityLabel: '朝气拉满 (2级)', audioKeyword: 'piano' },
-    { id: 'energy_3', title: '风涌云散 • 精神浩然觉新', desc: '磅礴大气共振慢鸣，重塑意志生命张力，重拾往日高光动力。', duration: 500, purpose: 'energy', isPremium: true, intensityLabel: '意志觉新 (3级)', audioKeyword: 'harp' }
+    { id: 'energy_1', title: '阴霾撕裂 • 晨光和煦沐浴', desc: '和风煦煦搭配高音微振，拂掉肢体沉闷感，唤回肌肉原本温热。', duration: 300, purpose: 'energy', isPremium: false, intensityLabel: '微温驱沉 (1级)', audioKeyword: 'bell', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3' },
+    { id: 'energy_2', title: '竹海洗炼 • 澄澈神智充能', desc: '竹浪微拂伴随欢快星铃，荡涤疲滞困顿并清凉提神。', duration: 420, purpose: 'energy', isPremium: true, intensityLabel: '朝气拉满 (2级)', audioKeyword: 'piano', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3' },
+    { id: 'energy_3', title: '风涌云散 • 精神浩然觉新', desc: '磅礴大气共振慢鸣，重塑意志生命张力，重拾往日高光动力。', duration: 500, purpose: 'energy', isPremium: true, intensityLabel: '意志觉新 (3级)', audioKeyword: 'harp', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3' }
   ],
   wuyin: [
-    { id: 'wuyin_1', title: '黄钟宫调 • 脾土宽泰和中', desc: '古法宫声调和脾胃，大吕纯正。温和平抑胸中郁结与挂虑焦躁，归元宽泰。', duration: 320, purpose: 'wuyin', isPremium: false, intensityLabel: '尊贵宫调 (1级)', audioKeyword: 'bowl' },
-    { id: 'wuyin_2', title: '太簇商调 • 肺金清气息虑', desc: '传统商音肃降健肺，钟声悠远。平定悲观低落心气，理气顺心，速入清静。', duration: 420, purpose: 'wuyin', isPremium: false, intensityLabel: '清越商调 (2级)', audioKeyword: 'bell' },
-    { id: 'wuyin_3', title: '姑洗角调 • 肝木生发平肝', desc: '角律通透疏肝解郁，木秀新发。疏导郁闷焦虑之无名虚火，身姿轻松，心情晴好。', duration: 480, purpose: 'wuyin', isPremium: true, intensityLabel: '生机角调 (3级)', audioKeyword: 'harp' },
-    { id: 'wuyin_4', title: '林钟徵调 • 心火宁寂清安', desc: '徵音调和心火血脉，磬振天人。平抑心率多梦惊惧，宁定安顿，恢复祥和。', duration: 540, purpose: 'wuyin', isPremium: true, intensityLabel: '神安徵调 (4级)', audioKeyword: 'piano' },
-    { id: 'wuyin_5', title: '南吕羽音 • 肾水潜藏涵气', desc: '羽声深邃滋养元精，海潮安魂。消除夜半慌张恐惧、精力耗竭，重锁深睡。', duration: 600, purpose: 'wuyin', isPremium: true, intensityLabel: '归底羽调 (5级)', audioKeyword: 'bowl' }
+    { id: 'wuyin_1', title: '黄钟宫调 • 脾土宽泰和中', desc: '古法宫声调和脾胃，大吕纯正。温和平抑胸中郁结与挂虑焦躁，归元宽泰。', duration: 320, purpose: 'wuyin', isPremium: false, intensityLabel: '尊贵宫调 (1级)', audioKeyword: 'bowl', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3' },
+    { id: 'wuyin_2', title: '太簇商调 • 肺金清气息虑', desc: '传统商音肃降健肺，钟声悠远。平定悲观低落心气，理气顺心，速入清静。', duration: 420, purpose: 'wuyin', isPremium: false, intensityLabel: '清越商调 (2级)', audioKeyword: 'bell', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3' },
+    { id: 'wuyin_3', title: '姑洗角调 • 肝木生发平肝', desc: '角律通透疏肝解郁，木秀新发。疏导郁闷焦虑之无名虚火，身姿轻松，心情晴好。', duration: 480, purpose: 'wuyin', isPremium: true, intensityLabel: '生机角调 (3级)', audioKeyword: 'harp', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3' },
+    { id: 'wuyin_4', title: '林钟徵调 • 心火宁寂清安', desc: '徵音调和心火血脉，磬振天人。平抑心率多梦惊惧，宁定安顿，恢复祥和。', duration: 540, purpose: 'wuyin', isPremium: true, intensityLabel: '神安徵调 (4级)', audioKeyword: 'piano', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+    { id: 'wuyin_5', title: '南吕羽音 • 肾水潜藏涵气', desc: '羽声深邃滋养元精，海潮安魂。消除夜半慌张恐惧、精力耗竭，重锁深睡。', duration: 600, purpose: 'wuyin', isPremium: true, intensityLabel: '归底羽调 (5级)', audioKeyword: 'bowl', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' }
   ]
 };
 
@@ -277,7 +277,7 @@ export default function MeditationPlayer({
     };
   };
 
-  // 2. 编写一个 useEffect 监听当前选中的分类导航 (category_slug) 并执行两表外键联合查询
+  // 2. 编写一个 useEffect 监听当前选中的分类导航 (category_slug) 并执行两表外键联合查询（带有多级容错降级系统）
   useEffect(() => {
     let active = true;
     const fetchTracksFromSupabase = async () => {
@@ -288,53 +288,109 @@ export default function MeditationPlayer({
       }
       try {
         const currentSlug = getQuerySlug(selectedCategory);
-        
         let data: any[] | null = null;
-        let error: any = null;
+        let finalError: any = null;
 
-        // 【1. 编写两表联合查询】：使用 categories!inner(*) 关联，用 categories.slug 过滤 music 数据
-        console.log(`[Supabase Dynamic Fetch] Querying 'music' joined with 'categories' for slug '${currentSlug}'`);
-        const joinResult = await supabase
-          .from('music')
-          .select('*, categories!inner(*)')
-          .eq('categories.slug', currentSlug);
+        console.log(`[Supabase Dynamic Fetch] Initiating multi-tier fetch for slug '${currentSlug}'`);
 
-        if (!joinResult.error && joinResult.data) {
-          data = joinResult.data;
-        } else {
-          console.warn('[Supabase Dynamic Fetch] Joined association query failed, running legendary 2-step fallback:', joinResult.error?.message);
-          
-          // 2-step fallback if relational keys are custom
-          const catResult = await supabase
-            .from('categories')
-            .select('*')
-            .eq('slug', currentSlug)
-            .maybeSingle();
+        // Tier 1: Two-table joint query (categories joined with music via foreign key)
+        try {
+          const joinResult = await supabase
+            .from('music')
+            .select('*, categories!inner(*)')
+            .eq('categories.slug', currentSlug);
 
-          if (catResult.data && !catResult.error) {
-            const categoryId = catResult.data.id;
-            const musicResult = await supabase
-              .from('music')
+          if (!joinResult.error && joinResult.data && joinResult.data.length > 0) {
+            data = joinResult.data;
+            console.log(`[Supabase Dynamic Fetch] Tier 1 Joint-Query Success: Received ${data.length} tracks.`);
+          } else if (joinResult.error) {
+            console.warn('[Supabase Dynamic Fetch] Tier 1 Joint-Query Failed:', joinResult.error.message);
+          }
+        } catch (e: any) {
+          console.warn('[Supabase Dynamic Fetch] Tier 1 Joint-Query Exception:', e.message || e);
+        }
+
+        // Tier 2: 2-step queries (lookup category_id then query matching music records)
+        if (!data || data.length === 0) {
+          try {
+            console.log('[Supabase Dynamic Fetch] Trying Tier 2 Fallback: 2-step single table association...');
+            const catResult = await supabase
+              .from('categories')
               .select('*')
-              .eq('category_id', categoryId);
-            
-            if (!musicResult.error && musicResult.data) {
-              data = musicResult.data;
-            } else {
-              error = musicResult.error;
+              .eq('slug', currentSlug)
+              .maybeSingle();
+
+            if (catResult.data && !catResult.error) {
+              const categoryId = catResult.data.id;
+              const musicResult = await supabase
+                .from('music')
+                .select('*')
+                .eq('category_id', categoryId);
+              
+              if (!musicResult.error && musicResult.data && musicResult.data.length > 0) {
+                data = musicResult.data;
+                console.log(`[Supabase Dynamic Fetch] Tier 2 Fallback Success: Found ${data.length} tracks.`);
+              } else if (musicResult.error) {
+                console.warn('[Supabase Dynamic Fetch] Tier 2 music table query error:', musicResult.error.message);
+              }
+            } else if (catResult.error) {
+              console.warn('[Supabase Dynamic Fetch] Tier 2 categories table lookup error:', catResult.error.message);
             }
-          } else {
-            error = catResult.error || new Error(`Category slug '${currentSlug}' not found in categories table.`);
+          } catch (e: any) {
+            console.warn('[Supabase Dynamic Fetch] Tier 2 Exception:', e.message || e);
           }
         }
 
-        if (error) {
-          console.error('Error fetching tracks from Supabase database:', error.message);
-          return;
+        // Tier 3: Query classic legacy single table 'music_tracks' directly (fully matches original config schema)
+        if (!data || data.length === 0) {
+          try {
+            console.log('[Supabase Dynamic Fetch] Trying Tier 3 Fallback: Querying classic "music_tracks" table directly...');
+            const tracksResult = await supabase
+              .from('music_tracks')
+              .select('*')
+              .eq('category_slug', currentSlug)
+              .order('sort_order', { ascending: true });
+
+            if (!tracksResult.error && tracksResult.data && tracksResult.data.length > 0) {
+              data = tracksResult.data;
+              console.log(`[Supabase Dynamic Fetch] Tier 3 Fallback Success: Found ${data.length} tracks from music_tracks.`);
+            } else if (tracksResult.error) {
+              console.warn('[Supabase Dynamic Fetch] Tier 3 query failed:', tracksResult.error.message);
+              finalError = tracksResult.error;
+            }
+          } catch (e: any) {
+            console.warn('[Supabase Dynamic Fetch] Tier 3 Exception:', e.message || e);
+          }
         }
 
+        // Tier 4: Query "music" directly and filter on the client side based on matching fields (ultimate schema fallback)
+        if (!data || data.length === 0) {
+          try {
+            console.log('[Supabase Dynamic Fetch] Trying Tier 4 Fallback: Direct select on "music" with client filtering...');
+            const musicDirectResult = await supabase
+              .from('music')
+              .select('*');
+
+            if (!musicDirectResult.error && musicDirectResult.data && musicDirectResult.data.length > 0) {
+              const filtered = musicDirectResult.data.filter((item: any) => {
+                const itemSlug = (item.category_slug || item.category || item.slug || '').toLowerCase();
+                return itemSlug === currentSlug.toLowerCase() || itemSlug.includes(currentSlug.toLowerCase());
+              });
+              if (filtered.length > 0) {
+                data = filtered;
+                console.log(`[Supabase Dynamic Fetch] Tier 4 Fallback Success: Found ${data.length} matched tracks from music.`);
+              }
+            } else if (musicDirectResult.error) {
+              console.warn('[Supabase Dynamic Fetch] Tier 4 direct music query error:', musicDirectResult.error.message);
+              finalError = musicDirectResult.error || finalError;
+            }
+          } catch (e: any) {
+            console.warn('[Supabase Dynamic Fetch] Tier 4 Exception:', e.message || e);
+          }
+        }
+
+        // Apply and update local categories if records are successfully retrieved
         if (data && data.length > 0) {
-          // 【2. 对齐前端字段】：歌曲名字渲染 music.title，歌曲描述渲染 music.subtitle
           const mapped = data.map(mapDbTrackToTrack);
           if (active) {
             setTracks(prev => ({
@@ -342,7 +398,10 @@ export default function MeditationPlayer({
               [selectedCategory]: mapped
             }));
             setPlaylistVersion(v => v + 1); // Triggers component state update safely
+            console.log(`[Supabase Dynamic Fetch] Saved ${mapped.length} remote tracks into State for category '${selectedCategory}'.`);
           }
+        } else {
+          console.warn('[Supabase Dynamic Fetch] No remote records loaded from the tiered query system for category:', selectedCategory, finalError?.message || '');
         }
       } catch (err) {
         console.error('Failed to pull custom playlist from Supabase:', err);
