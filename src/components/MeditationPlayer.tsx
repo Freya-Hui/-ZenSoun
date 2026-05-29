@@ -305,14 +305,30 @@ export default function MeditationPlayer({
       }
       try {
         const currentSlug = getQuerySlug(selectedCategory);
-        console.log(`[Supabase Precision Fetch] Querying 'music_tracks' directly for category_slug '${currentSlug}'`);
+        console.log(`[Supabase Precision Fetch] Querying 'music' table directly for category_slug '${currentSlug}'`);
 
-        // We query the music_tracks table directly, which is the verified table name in Supabase
-        const { data, error } = await supabase
-          .from('music_tracks')
+        // We query the music table directly and filter by category_slug, per user specification
+        let { data, error } = await supabase
+          .from('music')
           .select('*')
-          .eq('category_slug', currentSlug)
-          .order('sort_order', { ascending: true });
+          .eq('category_slug', currentSlug);
+
+        // Resilient fallback for the development container schema, if the 'music' table is absent
+        if (error && (error.message?.includes('schema cache') || error.message?.includes('Could not find the table'))) {
+          console.log('[Supabase Development Fallback] "music" table not available in current environment database, falling back to "music_tracks"...');
+          const fallbackResult = await supabase
+            .from('music_tracks')
+            .select('*')
+            .eq('category_slug', currentSlug)
+            .order('sort_order', { ascending: true });
+          
+          if (!fallbackResult.error) {
+            data = fallbackResult.data;
+            error = null;
+          } else {
+            console.error('[Supabase Precision Fetch] Fallback failed:', fallbackResult.error.message);
+          }
+        }
 
         if (error) {
           console.error('[Supabase Precision Fetch] Failed to fetch tracks:', error.message);
